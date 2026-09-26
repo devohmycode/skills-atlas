@@ -1,0 +1,181 @@
+/** English messages: the reference every other language must match (see `Messages`). */
+export const en = {
+  tagline: 'Every public Agent Skill, by theme — pick, install, uninstall.',
+
+  steps: { scope: 'Scope', select: 'Select', agents: 'Agents', method: 'Method', confirm: 'Confirm' },
+
+  keyNames: { enter: 'enter', space: 'space', esc: 'esc' },
+
+  keys: {
+    move: 'move',
+    page: 'page',
+    expand: 'expand',
+    collapse: 'collapse',
+    toggle: 'toggle',
+    search: 'search',
+    expandAll: 'expand all',
+    continue: 'continue',
+    choose: 'choose',
+    back: 'back',
+    quit: 'quit',
+    typeToFilter: 'type to filter',
+    apply: 'apply',
+    done: 'done',
+    clear: 'clear',
+  },
+
+  scope: {
+    title: 'Where should skills be read and installed?',
+    project: 'Project',
+    projectHint: (cwd: string) => `this directory — ${cwd}`,
+    global: 'Global',
+    globalHint: 'your user profile — every project',
+  },
+
+  loading: (scope: string) => `Looking for skills already installed (${scope})…`,
+  detectFailed: (msg: string) => `Could not detect installed skills: ${msg}`,
+
+  tree: {
+    skills: (n: string) => `${n} skills`,
+    selected: (n: number) => `${n} selected`,
+    scope: (s: string) => `scope: ${s}`,
+    searchLabel: 'search',
+    searchPlaceholder: 'type to filter, enter to keep, esc to clear',
+    noDescription: 'No description.',
+    noMatch: 'No skill matches this search.',
+    groupHint: 'Press space to toggle the whole group.',
+    installed: 'installed',
+    toRemove: 'will be uninstalled',
+    position: (a: string, b: string) => `${a} / ${b}`,
+    installs: 'installs',
+    stars: 'stars',
+    rank: 'skills.sh rank',
+  },
+
+  agents: {
+    title: 'Which agents should receive the new skills?',
+    all: 'All agents',
+    selected: (n: number) => `${n} selected`,
+    detected: 'detected',
+  },
+
+  method: {
+    title: 'How should skills be installed?',
+    symlink: 'Symlink',
+    symlinkHint: 'one copy in .agents/skills, linked into each agent (recommended)',
+    copy: 'Copy',
+    copyHint: 'an independent copy per agent',
+  },
+
+  confirm: {
+    title: 'Review the changes',
+    remove: (n: number) => `Uninstall ${n} skill${n === 1 ? '' : 's'} (from every agent)`,
+    install: (n: number, repos: number) => `Install ${n} skill${n === 1 ? '' : 's'} from ${repos} repositor${repos === 1 ? 'y' : 'ies'}`,
+    scope: 'Scope',
+    agents: 'Agents',
+    method: 'Method',
+    commands: 'Commands',
+  },
+
+  progress: {
+    installing: (n: number, repos: number) => `Installing ${n} skill${n === 1 ? '' : 's'} from ${repos} repositor${repos === 1 ? 'y' : 'ies'}`,
+    uninstalling: (n: number) => `uninstalling ${n}`,
+    uninstallTask: 'uninstall',
+    queued: 'queued',
+    fetching: 'fetching repository',
+    installing_: 'installing',
+    auditing: 'security audit',
+    removing: 'removing',
+    done: 'done',
+    failed: 'failed',
+    partial: 'partly done',
+    finished: (secs: string) => `in ${secs}`,
+  },
+
+  run: {
+    removing: 'Uninstalling',
+    installing: 'Installing',
+    installed: 'installed',
+    removed: 'uninstalled',
+    failed: 'failed',
+    summaryInstalled: (a: number, b: number) => `${a}/${b} installed`,
+    summaryRemoved: (a: number, b: number) => `${a}/${b} uninstalled`,
+    summaryFailed: (n: number) => `${n} command${n === 1 ? '' : 's'} failed`,
+    noChange: 'No changes.',
+  },
+
+  cli: {
+    description: 'Browse every public Agent Skill by theme, pick several and install them with `npx skills add`.',
+    lang: 'interface language (en, fr), remembered for later runs',
+    catalog: 'alternative catalog (.json or .json.gz, path or URL)',
+    theme: 'only these themes (id or label)',
+    search: 'filter by text (id, description)',
+    minInstalls: 'minimum installs',
+    all: 'include skills with no installs or stars',
+    agent: "target agents (ids from `skills-atlas agents`, '*' = all)",
+    global: 'install for your user (every project)',
+    project: 'install in the current project',
+    copy: 'copy files instead of symlinking',
+    symlink: 'symlink files (skills CLI default)',
+    yes: 'no questions; --agent becomes required',
+    dryRun: 'print the commands without running them',
+    verbose: 'show the output of `npx skills`',
+    skillsVersion: 'version of the skills CLI to run',
+    browse: 'interactive tree: installed skills are ticked; tick to install, untick to uninstall',
+    list: 'list skills (non-interactive)',
+    json: 'JSON output',
+    limit: 'maximum number of skills per theme',
+    themes: 'themes and their skill counts',
+    themesAll: 'also count skills with no installs or stars',
+    agentsCmd: 'agents accepted by --agent (★ = detected on this machine)',
+    install: 'install skills by id, without the tree',
+    ids: 'skills as owner/repo@skill',
+    langCmd: 'show or set the default interface language',
+    langSet: (l: string) => `Default language set to ${l}.`,
+    langCurrent: (l: string, all: string) => `Current language: ${l} (available: ${all})`,
+    catalogOf: (date: string, n: string) => `Catalog of ${date} — ${n} skills`,
+  },
+
+  errors: {
+    unknownTheme: (t: string) => `unknown theme "${t}" — see \`skills-atlas themes\``,
+    unknownAgents: (a: string) => `unknown agent(s): ${a} — see \`skills-atlas agents\``,
+    unknownLang: (l: string, all: string) => `unknown language "${l}" (available: ${all})`,
+    exclusive: (a: string, b: string) => `${a} and ${b} are mutually exclusive`,
+    needsTty: 'browse needs an interactive terminal — use `list` and `install` instead',
+    noMatch: 'no skill matches these filters',
+    agentRequired: '--agent is required with --yes or without a terminal (installing to every agent is never implicit)',
+  },
+
+  themes: {
+    installed: 'Already installed',
+    frontend: 'Frontend & web',
+    backend: 'Backend & APIs',
+    code: 'Code & architecture',
+    mobile: 'Mobile',
+    databases: 'Databases',
+    devops: 'DevOps & cloud',
+    testing: 'Testing & quality',
+    security: 'Security',
+    ai: 'AI, LLMs & agents',
+    data: 'Data & analytics',
+    documents: 'Documents & office',
+    design: 'Design & UI/UX',
+    media: 'Image, video & audio',
+    writing: 'Writing & communication',
+    business: 'Marketing, business & finance',
+    productivity: 'Productivity & workflows',
+    research: 'Research & science',
+    other: 'Other',
+  } as Record<string, string>,
+};
+
+type Widen<T> = T extends (...args: infer A) => string
+  ? (...args: A) => string
+  : T extends string
+    ? string
+    : T extends Record<string, unknown>
+      ? { [K in keyof T]: Widen<T[K]> }
+      : T;
+
+/** Shape every translation must implement. */
+export type Messages = Widen<typeof en>;

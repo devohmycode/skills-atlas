@@ -1,0 +1,57 @@
+{
+  "name": "skills-atlas",
+  "version": "0.1.0",
+  "description": "Browse every public Agent Skill grouped by theme, multi-select and install them through `npx skills add`.",
+  "type": "module",
+  "bin": {
+    "skills-atlas": "dist/cli.js"
+  },
+  "files": [
+    "dist",
+    "data/catalog.json.gz"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsx src/cli.tsx",
+    "crawl": "tsx scripts/crawl.ts",
+    "sync-agents": "tsx scripts/sync-agents.ts",
+    "reclassify": "tsx scripts/reclassify.ts",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "keywords": [
+    "agent-skills",
+    "skills",
+    "claude-code",
+    "cli"
+  ],
+  "author": "OhMyCode",
+  "license": "MIT",
+  "homepage": "https://github.com/devohmycode/skills-atlas#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/devohmycode/skills-atlas.git"
+  },
+  "bugs": {
+    "url": "https://github.com/devohmycode/skills-atlas/issues"
+  },
+  "dependencies": {
+    "commander": "^14.0.0",
+    "ink": "^6.0.0",
+    "p-limit": "^7.0.0",
+    "react": "^19.0.0",
+    "zod": "^4.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "@types/react": "^19.0.0",
+    "ink-testing-library": "^4.0.0",
+    "tsup": "^8.5.0",
+    "tsx": "^4.20.0",
+    "typescript": "^5.9.0",
+    "vitest": "^3.2.0"
+  }
+}
