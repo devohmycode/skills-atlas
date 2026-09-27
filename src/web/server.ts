@@ -21,7 +21,7 @@ export interface ServerOptions {
   catalogSkills: Skill[];
   themes: { id: string; label: string }[];
   skillsVersion: string;
-  /** 0 picks a free port. */
+  /** Default: DEFAULT_PORT, or a free one when it is taken; 0 always picks a free one. */
   port?: number;
   /** Project directory for the project scope. */
   cwd?: string;
@@ -38,6 +38,7 @@ export interface AtlasServer {
   close: () => Promise<void>;
 }
 
+export const DEFAULT_PORT = 4747;
 /** Largest page of skills a request may ask for. */
 const MAX_LIMIT = 500;
 /** Largest JSON body accepted. */
@@ -233,10 +234,22 @@ export async function startServer(opts: ServerOptions): Promise<AtlasServer> {
     return timingSafeEqual(Buffer.from(value), Buffer.from(token));
   }
 
-  await new Promise<void>((resolve, reject) => {
-    server.once('error', reject);
-    server.listen(opts.port ?? 0, '127.0.0.1', () => resolve());
-  });
+  const listen = (port: number) =>
+    new Promise<void>((resolve, reject) => {
+      server.once('error', reject);
+      server.listen(port, '127.0.0.1', () => {
+        server.off('error', reject);
+        resolve();
+      });
+    });
+  if (opts.port !== undefined) await listen(opts.port);
+  else {
+    // A stable port keeps the same origin between runs, so the page remembers its theme.
+    await listen(DEFAULT_PORT).catch((err: NodeJS.ErrnoException) => {
+      if (err.code !== 'EADDRINUSE') throw err;
+      return listen(0);
+    });
+  }
   const port = (server.address() as AddressInfo).port;
   return {
     url: `http://127.0.0.1:${port}/#${token}`,

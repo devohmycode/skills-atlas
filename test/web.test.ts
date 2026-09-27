@@ -36,6 +36,7 @@ beforeAll(async () => {
       { id: 'security', label: 'Security' },
     ],
     skillsVersion: '1.7.0',
+    port: 0,
     cwd: configDir,
     listInstalled: async (scope) => installedNow.filter((s) => s.scope === scope),
     runAll: async (commands, opts = {}) => {
@@ -92,7 +93,7 @@ describe('web server', () => {
     expect(state.installed).toEqual([expect.objectContaining({ id: 'c/d@pentest', scopes: ['global'], installedName: 'pentest' })]);
     expect(state.themes[0].id).toBe('installed');
     expect(state.agents.some((a: { id: string }) => a.id === 'claude-code')).toBe(true);
-    expect(state.messages.apply).toBeTruthy();
+    expect(state.messages.applyN).toContain('{n}');
   });
 
   it('searches, sorts, filters and pages the catalog', async () => {

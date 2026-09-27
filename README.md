@@ -33,7 +33,7 @@ The server listens on `127.0.0.1` only. The address carries a random token (afte
 
 | Option | Effect |
 |---|---|
-| `--port <n>` | port to listen on (default: a free one) |
+| `--port <n>` | port to listen on (default: 4747, or a free one if taken; a stable port lets the page remember its light/dark choice) |
 | `--no-open` | print the address without opening the browser |
 | `--catalog`, `--offline`, `--skills-version` | as for `browse` |
 
