@@ -27,6 +27,8 @@ skills-atlas ui                               # the same in your browser, with t
 
 ### Web interface
 
+![The skills-atlas web interface: themes as a colour-coded legend on the left, the catalog sorted by installs, installed skills ticked](https://raw.githubusercontent.com/devohmycode/skills-atlas/main/docs/web-ui.jpg)
+
 `skills-atlas ui` serves a local page and opens it in your browser: themes on the left, a search over the whole catalog, skills to tick (installed ones are ticked; untick to uninstall), then scope, agents and method on the right with the exact `npx skills` commands, and a live progress window once you apply. It runs the same code as the terminal (catalog, detection of installed skills, install commands) and remembers the same choices.
 
 The server listens on `127.0.0.1` only. The address carries a random token (after the `#`, so it never leaves your browser) that every request must present, and requests from any other host name are refused, so no other web page can drive installs. Stop it with Ctrl+C.

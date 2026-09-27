@@ -239,7 +239,7 @@ export const en = {
     backend: 'Backend & APIs',
     code: 'Code & architecture',
     mobile: 'Mobile (iOS, Android)',
-    desktop: 'Desktop apps (macOS, Windows, Linux)',
+    desktop: 'Desktop (macOS, Windows, Linux)',
     databases: 'Databases',
     devops: 'DevOps & cloud',
     testing: 'Testing & quality',

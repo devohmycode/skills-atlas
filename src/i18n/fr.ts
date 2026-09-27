@@ -242,7 +242,7 @@ export const fr: Messages = {
     backend: 'Backend & API',
     code: 'Code & architecture',
     mobile: 'Mobile (iOS, Android)',
-    desktop: 'Applications de bureau (macOS, Windows, Linux)',
+    desktop: 'Bureau (macOS, Windows, Linux)',
     databases: 'Bases de données',
     devops: 'DevOps & cloud',
     testing: 'Tests & qualité',

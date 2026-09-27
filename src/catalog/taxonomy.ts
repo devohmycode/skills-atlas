@@ -59,7 +59,7 @@ export const THEMES: ThemeRule[] = [
     // (macOS, AppKit, menu bar…), which outweigh the shared Swift words.
     // "desktop" alone is left out: it mostly means Claude Desktop.
     id: 'desktop',
-    label: 'Desktop apps (macOS, Windows, Linux)',
+    label: 'Desktop (macOS, Windows, Linux)',
     keywords: [
       'macos', 'mac os', 'appkit', 'menu bar', 'menubar', 'mac app*', 'notariz*', 'dmg',
       'desktop app*', 'desktop application*', 'electron', 'tauri', 'winui', 'wpf', 'winforms', 'win32',
