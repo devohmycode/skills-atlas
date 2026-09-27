@@ -107,7 +107,7 @@ In a terminal, progress is shown uv-style: one line per task (uninstall, then on
 
 ## The catalog
 
-`data/catalog.json.gz` is rebuilt every week (on Mondays) by GitHub Actions (`npm run crawl`) from:
+`data/catalog.json.gz` is rebuilt every day by GitHub Actions (`npm run crawl`) from:
 
 | Source | Access | Provides |
 |---|---|---|
@@ -116,7 +116,7 @@ In a terminal, progress is shown uv-style: one line per task (uninstall, then on
 | [Smithery](https://smithery.ai/skills) | `registry.smithery.ai/skills`, at most 500 results per query | categories (Coding, Design, Security…) |
 | GitHub | Trees API + `raw.githubusercontent.com` | missing descriptions, read from `SKILL.md` |
 
-**Rate limits.** The skills.sh search API allows 30 requests per minute. The crawl queries it at that pace, about 2 s per owner. The weekly workflow covers the top 600 owners; a local crawl covers none by default. With `VERCEL_OIDC_TOKEN`, the crawl uses the [official API](https://skills.sh/docs/api) instead, which returns the full leaderboard.
+**Rate limits.** The skills.sh search API allows 30 requests per minute. The crawl queries it at that pace, about 2 s per owner. The daily workflow covers the top 600 owners; a local crawl covers none by default. With `VERCEL_OIDC_TOKEN`, the crawl uses the [official API](https://skills.sh/docs/api) instead, which returns the full leaderboard.
 
 **Processing:**
 
