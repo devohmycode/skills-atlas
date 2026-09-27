@@ -1,20 +1,32 @@
 import type { Theme } from '../types.js';
+import { de } from './de.js';
 import { en, type Messages } from './en.js';
+import { es } from './es.js';
 import { fr } from './fr.js';
 import { ja } from './ja.js';
 import { ko } from './ko.js';
+import { pt } from './pt.js';
 import { zh } from './zh.js';
 
 /**
  * Available translations. Adding a language = one file implementing `Messages`, one entry here
  * and its locale in LOCALES (the tests check that every theme is translated).
  */
-export const LANGUAGES = { en, fr, zh, ja, ko } satisfies Record<string, Messages>;
+export const LANGUAGES = { en, fr, es, pt, de, zh, ja, ko } satisfies Record<string, Messages>;
 export type Lang = keyof typeof LANGUAGES;
 export const DEFAULT_LANG: Lang = 'en';
 
 /** Locale used to format numbers (`79,668`, `79 668`…), also sent to the web page. */
-export const LOCALES: Record<Lang, string> = { en: 'en-US', fr: 'fr-FR', zh: 'zh-CN', ja: 'ja-JP', ko: 'ko-KR' };
+export const LOCALES: Record<Lang, string> = {
+  en: 'en-US',
+  fr: 'fr-FR',
+  es: 'es-419',
+  pt: 'pt-BR',
+  de: 'de-DE',
+  zh: 'zh-CN',
+  ja: 'ja-JP',
+  ko: 'ko-KR',
+};
 
 let current: Lang = DEFAULT_LANG;
 

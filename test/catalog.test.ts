@@ -299,7 +299,8 @@ describe('i18n', () => {
     expect(normalizeLang('FR')).toBe('fr');
     expect(normalizeLang('fr_FR.UTF-8')).toBe('fr');
     expect(normalizeLang('en-US')).toBe('en');
-    expect(normalizeLang('de')).toBeUndefined();
+    expect(normalizeLang('de')).toBe('de');
+    expect(normalizeLang('it')).toBeUndefined();
     expect(normalizeLang(undefined)).toBeUndefined();
   });
 
@@ -311,8 +312,11 @@ describe('i18n', () => {
     expect(systemLang({}, 'fr-FR')).toBe('fr');
     expect(systemLang({ LANG: 'C.UTF-8' }, 'ja-JP')).toBe('ja');
     // A language we do not have, set explicitly, is not overridden by the OS locale.
-    expect(systemLang({ LANG: 'de_DE.UTF-8' }, 'fr-FR')).toBeUndefined();
+    expect(systemLang({ LANG: 'it_IT.UTF-8' }, 'fr-FR')).toBeUndefined();
     expect(normalizeLang('zh-TW')).toBe('zh');
+    expect(systemLang({ LANG: 'pt_BR.UTF-8' }, 'en-US')).toBe('pt');
+    expect(systemLang({}, 'de-AT')).toBe('de');
+    expect(systemLang({}, 'es-MX')).toBe('es');
   });
 
   it('has a number locale for every language', () => {

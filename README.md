@@ -41,19 +41,19 @@ The server listens on `127.0.0.1` only. The address carries a random token (afte
 
 ### Interface language
 
-The interface speaks **English, French, Simplified Chinese, Japanese and Korean** (`en`, `fr`, `zh`, `ja`, `ko`). It follows your system language when it is one of these, and falls back to English:
+The interface speaks **English, French, Spanish, Brazilian Portuguese, German, Simplified Chinese, Japanese and Korean** (`en`, `fr`, `es`, `pt`, `de`, `zh`, `ja`, `ko`). It follows your system language when it is one of these, and falls back to English:
 
 ```bash
 skills-atlas -l fr                  # switch to French (or --lang fr): the choice is remembered
 skills-atlas -l en                  # back to English
-skills-atlas -l ja                  # 日本語 (zh: 简体中文, ko: 한국어)
+skills-atlas -l ja                  # 日本語 (es: español, pt: português, de: Deutsch, zh: 简体中文, ko: 한국어)
 skills-atlas lang                   # current language
 SKILLS_ATLAS_LANG=fr skills-atlas   # force a language from the environment, without saving it
 ```
 
 The choice made with `-l` is saved in `~/.config/skills-atlas/config.json`, so later runs keep it without the flag. Precedence: `-l`/`--lang`, then `SKILLS_ATLAS_LANG`, then the saved choice, then the system language (`LC_ALL`, `LC_MESSAGES`, `LANG`, or the OS locale on Windows), then English. Chinese, Japanese and Korean characters take two terminal columns; the tree measures them as such, so columns stay aligned. `--theme` accepts a theme id or its label in any language (`security`, `Sécurité`…).
 
-Translations live in `src/i18n/`. Adding a language takes one file implementing the `Messages` type (TypeScript reports any missing key), one entry in `LANGUAGES` and its number locale in `LOCALES`; the tests check that every theme is translated. The Chinese, Japanese and Korean translations have not been reviewed by native speakers yet: corrections are welcome.
+Translations live in `src/i18n/`. Adding a language takes one file implementing the `Messages` type (TypeScript reports any missing key), one entry in `LANGUAGES` and its number locale in `LOCALES`; the tests check that every theme is translated. The Spanish, Portuguese, German, Chinese, Japanese and Korean translations have not been reviewed by native speakers yet: corrections are welcome.
 
 ### Installed skills
 
