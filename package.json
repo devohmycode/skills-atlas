@@ -15,6 +15,7 @@
   },
   "scripts": {
     "build": "tsup",
+    "prepublishOnly": "npm run typecheck && npm test && npm run build",
     "dev": "tsx src/cli.tsx",
     "crawl": "tsx scripts/crawl.ts",
     "sync-agents": "tsx scripts/sync-agents.ts",
