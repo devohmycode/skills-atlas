@@ -26,6 +26,10 @@ interface CacheMeta {
 export interface LatestOptions {
   /** Never download: use the cache or the bundled snapshot. */
   offline?: boolean;
+  /** Ask GitHub now, however recent the cache (the ETag still avoids a needless download). */
+  refresh?: boolean;
+  /** Called when the download fails; the cache or the bundled snapshot is used anyway. */
+  onError?: (err: unknown) => void;
   /** Called before a download starts, e.g. to tell the user. */
   onDownload?: () => void;
   bundledPath?: string;
@@ -77,7 +81,7 @@ export async function loadLatestCatalog(opts: LatestOptions = {}): Promise<Catal
 
   // A cache file that vanished while its ETag is known is fetched again at once;
   // after a failed download (no ETag), the retry delay applies.
-  const stale = !meta || now - meta.checkedAt >= MAX_AGE_MS || (!cached && meta.etag !== undefined);
+  const stale = opts.refresh || !meta || now - meta.checkedAt >= MAX_AGE_MS || (!cached && meta.etag !== undefined);
   if (!opts.offline && stale) {
     opts.onDownload?.();
     try {
@@ -95,9 +99,10 @@ export async function loadLatestCatalog(opts: LatestOptions = {}): Promise<Catal
         writeMeta({ etag: res.headers.get('etag') ?? undefined, checkedAt: now });
         cached = fresh;
       } else throw new Error(`HTTP ${res.status}`);
-    } catch {
+    } catch (err) {
       // Offline, GitHub down or a bad file: try again in an hour, not on every run.
       writeMeta({ etag: meta?.etag, checkedAt: now - MAX_AGE_MS + RETRY_AFTER_MS });
+      opts.onError?.(err);
     }
   }
 

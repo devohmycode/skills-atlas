@@ -29,6 +29,9 @@ const paint = (style: Style, text: string) => (process.stdout.isTTY ? styleText(
 interface CommonOptions {
   catalog?: string;
   offline?: boolean;
+  refresh?: boolean;
+  /** Do not print the catalog date after --refresh (the command shows it). */
+  quiet?: boolean;
 }
 interface FilterOptions extends CommonOptions {
   theme?: string[];
@@ -86,10 +89,18 @@ async function openCatalog(opts: CommonOptions): Promise<Catalog> {
   try {
     if (opts.catalog) return await loadCatalog(opts.catalog);
     // Latest snapshot from GitHub (refreshed daily), else the one bundled in the package.
-    return await loadLatestCatalog({
+    const catalog = await loadLatestCatalog({
       offline: opts.offline || Boolean(process.env.SKILLS_ATLAS_OFFLINE),
+      refresh: opts.refresh,
       onDownload: () => process.stderr.isTTY && console.error(paint('dim', t().cli.updatingCatalog)),
+      // Silent fallback normally; with --refresh the user asked for the download, so say it failed.
+      onError: (err) =>
+        opts.refresh && console.error(paint('yellow', t().cli.refreshFailed(err instanceof Error ? err.message : String(err)))),
     });
+    if (opts.refresh && !opts.quiet) {
+      console.error(paint('dim', t().cli.catalogOf(catalog.generatedAt.slice(0, 10), formatNumber(catalog.skills.length))));
+    }
+    return catalog;
   } catch (err) {
     fail(err instanceof Error ? err.message : String(err));
   }
@@ -222,6 +233,7 @@ const program = new Command()
 
 const catalogOption = () => new Option('--catalog <path|url>', c.catalog);
 const offlineOption = () => new Option('--offline', c.offline);
+const refreshOption = () => new Option('--refresh', c.refresh).conflicts('offline');
 const filterOptions = (cmd: Command) =>
   cmd
     .option('-t, --theme <theme...>', c.theme)
@@ -231,7 +243,8 @@ const filterOptions = (cmd: Command) =>
     .option('--official', c.official)
     .addOption(new Option('-s, --sort <order>', c.sort).choices(SORT_ORDERS).default('installs'))
     .addOption(catalogOption())
-    .addOption(offlineOption());
+    .addOption(offlineOption())
+    .addOption(refreshOption());
 const installOptions = (cmd: Command) =>
   cmd
     .option('-a, --agent <agents...>', c.agent)
@@ -312,6 +325,7 @@ program
   .option('--skills-version <version>', c.skillsVersion, SKILLS_VERSION)
   .addOption(catalogOption())
   .addOption(offlineOption())
+  .addOption(refreshOption())
   .action(async (opts: CommonOptions & { port?: number; open: boolean; skillsVersion: string }) => {
     const catalog = await openCatalog(opts);
     const server = await startServer({
@@ -336,12 +350,16 @@ program
   .option('--official', c.official)
   .addOption(catalogOption())
   .addOption(offlineOption())
+  .addOption(refreshOption())
   .action(async (opts: FilterOptions) => {
-    const catalog = await openCatalog(opts);
+    // The header below already dates the catalog: --refresh need not print it too.
+    const catalog = await openCatalog({ ...opts, quiet: true });
     const skills = querySkills(catalog, { all: opts.all, official: opts.official });
     console.log(`\n${paint('bold', c.catalogOf(catalog.generatedAt.slice(0, 10), formatNumber(skills.length)))}\n`);
-    for (const g of groupByTheme(catalog.themes, skills)) {
-      console.log(`  ${paint('cyan', g.theme.id.padEnd(14))} ${themeLabel(g.theme).padEnd(32)} ${formatNumber(g.skills.length).padStart(7)}`);
+    const groups = groupByTheme(catalog.themes, skills);
+    const labelW = Math.max(...groups.map((g) => themeLabel(g.theme).length));
+    for (const g of groups) {
+      console.log(`  ${paint('cyan', g.theme.id.padEnd(14))} ${themeLabel(g.theme).padEnd(labelW)} ${formatNumber(g.skills.length).padStart(7)}`);
     }
     console.log();
   });

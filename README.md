@@ -35,7 +35,7 @@ The server listens on `127.0.0.1` only. The address carries a random token (afte
 |---|---|
 | `--port <n>` | port to listen on (default: 4747, or a free one if taken; a stable port lets the page remember its light/dark choice) |
 | `--no-open` | print the address without opening the browser |
-| `--catalog`, `--offline`, `--skills-version` | as for `browse` |
+| `--catalog`, `--offline`, `--refresh`, `--skills-version` | as for `browse` |
 
 ### Interface language
 
@@ -91,6 +91,7 @@ The mouse works too: the wheel moves through the list, a click ticks a skill, op
 | `--skills-version <v>` | skills CLI version (default: 1.7.0, pinned) |
 | `--catalog <path\|url>` | alternative catalog |
 | `--offline` | do not download the latest catalog (also `SKILLS_ATLAS_OFFLINE=1`) |
+| `--refresh` | check GitHub for a newer catalog now instead of waiting up to 12 hours (an unchanged one is not downloaded again) |
 | `--all`, `--min-installs <n>` | include skills with no installs or stars / minimum installs |
 | `-s, --sort <order>` | `installs` (default) or `name`; also for `list` |
 | `--official` | only official skills; also for `list` and `themes` |
@@ -116,7 +117,7 @@ In a terminal, progress is shown uv-style: one line per task (uninstall, then on
 
 ## The catalog
 
-`data/catalog.json.gz` is rebuilt every day by GitHub Actions (`npm run crawl`). The CLI downloads that snapshot from GitHub, keeps it in `~/.cache/skills-atlas/` (or `$XDG_CACHE_HOME/skills-atlas/`) and checks for a new one at most every 12 hours, with an ETag, so an unchanged catalog is not downloaded again. It uses the snapshot bundled in the npm package when that one is newer, when GitHub cannot be reached (it then waits an hour before trying again), or with `--offline`. Changes to the catalog format must stay readable by released versions, which download it too.
+`data/catalog.json.gz` is rebuilt every day by GitHub Actions (`npm run crawl`). The CLI downloads that snapshot from GitHub, keeps it in `~/.cache/skills-atlas/` (or `$XDG_CACHE_HOME/skills-atlas/`) and checks for a new one at most every 12 hours, with an ETag, so an unchanged catalog is not downloaded again. It uses the snapshot bundled in the npm package when that one is newer, when GitHub cannot be reached (it then waits an hour before trying again), or with `--offline`. `--refresh` skips the 12-hour wait; failing that, deleting `~/.cache/skills-atlas/` has the same effect on older versions. Changes to the catalog format must stay readable by released versions, which download it too.
 
 The snapshot is built from:
 

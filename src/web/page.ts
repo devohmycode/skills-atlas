@@ -74,7 +74,6 @@ header {
 .brand { display: flex; align-items: center; gap: 12px; min-width: 0; }
 .brand svg { flex: none; color: var(--accent); }
 .brand h1 { margin: 0; font: 600 21px/1 var(--display); letter-spacing: .01em; }
-.brand p { margin: 3px 0 0; font-size: 12px; color: var(--ink-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .search { position: relative; }
 .search input {
   width: 100%; height: 42px; padding: 0 14px 0 42px; border: 1px solid var(--rule-2); border-radius: 21px;
@@ -175,6 +174,7 @@ aside { background: var(--sheet); border-left: 1px solid var(--rule); display: f
 .panel-foot { padding: 14px 20px 18px; border-top: 1px solid var(--rule); background: var(--sheet); }
 aside h2 { margin: 22px 0 10px; }
 aside h2:first-child { margin-top: 0; }
+.lede { margin: 0 0 12px; font: 500 17px/1.35 var(--display); max-width: 26ch; }
 .intro { margin: 0; color: var(--ink-2); max-width: 36ch; }
 .intro-art { display: block; margin: 14px 0 0; color: var(--rule-2); }
 .tally { display: flex; gap: 18px; margin-bottom: 12px; }
@@ -260,7 +260,6 @@ dialog::backdrop { background: color-mix(in oklab, var(--paper) 40%, rgba(5,12,2
 }
 @media (max-width: 1180px) {
   header { grid-template-columns: auto minmax(0, 1fr) auto; }
-  .brand p { display: none; }
   main { grid-template-columns: 210px minmax(0, 1fr) 320px; }
 }
 @media (max-width: 880px) {
@@ -290,7 +289,7 @@ dialog::backdrop { background: color-mix(in oklab, var(--paper) 40%, rgba(5,12,2
       <path d="M17 4.5l3.2 12.5L17 29.5l-3.2-12.5z" fill="currentColor"/>
       <path d="M4.5 17h4M25.5 17h4" stroke="currentColor" stroke-width="1.5"/>
     </svg>
-    <div><h1>Skills Atlas</h1><p id="tagline"></p></div>
+    <h1>Skills Atlas</h1>
   </div>
   <label class="search">
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
@@ -511,7 +510,7 @@ dialog::backdrop { background: color-mix(in oklab, var(--paper) 40%, rgba(5,12,2
     var nAdd = adds.size, nRm = removes.size;
     var h = '';
     if (!nAdd && !nRm) {
-      h = '<h2>' + esc(M.selection) + '</h2><p class="intro">' + esc(M.selectionEmpty) + '</p>' +
+      h = '<p class="lede">' + esc(M.tagline) + '</p><p class="intro">' + esc(M.selectionEmpty) + '</p>' +
         '<svg class="intro-art" width="220" height="90" viewBox="0 0 220 90" fill="none" stroke="currentColor" stroke-width="1.2" aria-hidden="true">' +
         '<path d="M8 70c30-26 52 8 84-14s46-40 78-22 34 20 44 14"/><path d="M8 82c34-24 56 6 88-12s48-34 80-18 30 18 38 14" opacity=".6"/>' +
         '<path d="M20 56c24-20 44 4 70-12s40-30 66-18" opacity=".35"/><circle cx="156" cy="34" r="4" fill="currentColor"/></svg>';
@@ -679,7 +678,6 @@ dialog::backdrop { background: color-mix(in oklab, var(--paper) 40%, rgba(5,12,2
     setState(st);
     opts.scope = st.defaults.scope; opts.method = st.defaults.method;
     opts.agents = new Set(st.defaults.agents);
-    $('tagline').textContent = M.tagline;
     $('q').placeholder = M.searchPlaceholder;
     $('q').setAttribute('aria-label', M.searchPlaceholder);
     $('sort').innerHTML = '<button data-sort="installs" aria-pressed="true">' + esc(M.sortInstalls) + '</button>' +

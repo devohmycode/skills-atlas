@@ -36,6 +36,25 @@ describe('latest catalog', () => {
     expect(fetch).toHaveBeenCalledTimes(1);
   });
 
+  it('asks GitHub again with --refresh, even with a fresh cache, keeping the ETag', async () => {
+    const fetch = vi.fn(async (_url: string | URL | Request, init?: RequestInit) =>
+      (init?.headers as Record<string, string>)['if-none-match'] ? new Response(null, { status: 304 }) : ok(catalog('2026-09-27T00:00:00Z')),
+    );
+    const opts = { dir: join(dir, 'cache'), bundledPath, fetch, now: 1_000 };
+    await loadLatestCatalog(opts);
+    expect((await loadLatestCatalog({ ...opts, now: 2_000, refresh: true })).generatedAt).toBe('2026-09-27T00:00:00Z');
+    expect(fetch).toHaveBeenCalledTimes(2);
+    expect(fetch.mock.calls[1]![1]!.headers).toEqual({ 'if-none-match': '"v2"' });
+  });
+
+  it('reports a failed download and falls back to the local catalog', async () => {
+    const onError = vi.fn();
+    const fetch = vi.fn(async () => new Response('nope', { status: 503 }));
+    const got = await loadLatestCatalog({ dir: join(dir, 'cache'), bundledPath, fetch, refresh: true, onError });
+    expect(got.generatedAt).toBe('2026-09-01T00:00:00Z');
+    expect(onError).toHaveBeenCalledWith(expect.objectContaining({ message: 'HTTP 503' }));
+  });
+
   it('revalidates a stale cache with its ETag', async () => {
     const cache = join(dir, 'cache');
     await loadLatestCatalog({ dir: cache, bundledPath, now: 0, fetch: async () => ok(catalog('2026-09-27T00:00:00Z')) });
