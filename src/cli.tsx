@@ -4,7 +4,7 @@ import { styleText } from 'node:util';
 import { AGENTS, detectAgents, unknownAgents } from './agents.js';
 import { mergeInstalled } from './catalog/installed.js';
 import { loadCatalog } from './catalog/load.js';
-import { groupByTheme, popularityLabel, querySkills, resolveTheme, type QueryOptions } from './catalog/query.js';
+import { groupByTheme, popularityLabel, querySkills, resolveTheme, SORT_ORDERS, type QueryOptions, type SortOrder } from './catalog/query.js';
 import { readConfig, writeConfig } from './config.js';
 import { formatNumber, getLang, langFlag, LANGUAGES, normalizeLang, setLang, t, themeLabel, type Lang } from './i18n/index.js';
 import { formatCommand, parseSkillId, planInstall, planRemove, type InstallCommand } from './install/plan.js';
@@ -30,6 +30,8 @@ interface FilterOptions extends CommonOptions {
   search?: string;
   minInstalls?: number;
   all?: boolean;
+  official?: boolean;
+  sort?: SortOrder;
 }
 interface InstallFlags {
   agent?: string[];
@@ -83,7 +85,7 @@ async function openCatalog(opts: CommonOptions): Promise<Catalog> {
 
 function toQuery(catalog: Catalog, opts: FilterOptions): QueryOptions {
   const themes = opts.theme?.map((th) => resolveTheme(catalog, th)?.id ?? fail(t().errors.unknownTheme(th)));
-  return { themes, search: opts.search, minInstalls: opts.minInstalls, all: opts.all };
+  return { themes, search: opts.search, minInstalls: opts.minInstalls, all: opts.all, official: opts.official, sort: opts.sort };
 }
 
 /** Options fixed by flags; anything left undefined is asked (or defaulted with -y). */
@@ -213,6 +215,8 @@ const filterOptions = (cmd: Command) =>
     .option('-q, --search <text>', c.search)
     .option('--min-installs <n>', c.minInstalls, (v) => Number.parseInt(v, 10))
     .option('--all', c.all)
+    .option('--official', c.official)
+    .addOption(new Option('-s, --sort <order>', c.sort).choices(SORT_ORDERS).default('installs'))
     .addOption(catalogOption());
 const installOptions = (cmd: Command) =>
   cmd
@@ -247,6 +251,8 @@ filterOptions(installOptions(program.command('browse', { isDefault: true })))
         detectedAgents={detected}
         skillsVersion={opts.skillsVersion}
         loadInstalled={loadInstalled}
+        sort={opts.sort}
+        official={opts.official}
         onDone={(r) => (result = r)}
       />,
     );
@@ -285,10 +291,11 @@ program
   .command('themes')
   .description(c.themes)
   .option('--all', c.themesAll)
+  .option('--official', c.official)
   .addOption(catalogOption())
   .action(async (opts: FilterOptions) => {
     const catalog = await openCatalog(opts);
-    const skills = querySkills(catalog, { all: opts.all });
+    const skills = querySkills(catalog, { all: opts.all, official: opts.official });
     console.log(`\n${paint('bold', c.catalogOf(catalog.generatedAt.slice(0, 10), formatNumber(skills.length)))}\n`);
     for (const g of groupByTheme(catalog.themes, skills)) {
       console.log(`  ${paint('cyan', g.theme.id.padEnd(14))} ${themeLabel(g.theme).padEnd(32)} ${formatNumber(g.skills.length).padStart(7)}`);

@@ -14,6 +14,8 @@ export const en = {
     toggle: 'toggle',
     search: 'search',
     expandAll: 'expand all',
+    sort: 'sort',
+    official: 'official only',
     continue: 'continue',
     choose: 'choose',
     back: 'back',
@@ -50,6 +52,10 @@ export const en = {
     installs: 'installs',
     stars: 'stars',
     rank: 'skills.sh rank',
+    sortedBy: (o: string) => `sorted by ${o}`,
+    sort: { installs: 'installs', rank: 'skills.sh rank', name: 'name' },
+    official: 'official',
+    officialOnly: 'official only',
   },
 
   agents: {
@@ -112,6 +118,8 @@ export const en = {
     search: 'filter by text (id, description)',
     minInstalls: 'minimum installs',
     all: 'include skills with no installs or stars',
+    official: 'only official skills (published by the vendor, per officialskills.sh)',
+    sort: 'order: installs (most installed first), rank (skills.sh leaderboard), name',
     agent: "target agents (ids from `skills-atlas agents`, '*' = all)",
     global: 'install for your user (every project)',
     project: 'install in the current project',

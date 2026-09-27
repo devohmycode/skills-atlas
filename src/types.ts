@@ -29,6 +29,8 @@ export interface Skill {
   installs?: number;
   stars?: number;
   rank?: number;
+  /** Published by the vendor itself (its GitHub owner is listed on officialskills.sh). */
+  official?: boolean;
   labels: string[];
   origins: Origin[];
   /** Theme ids, 1 or 2, the first being the primary theme. */
@@ -48,6 +50,8 @@ export interface Catalog {
   stats: {
     raw: Record<Origin, number>;
     merged: number;
+    /** Skills flagged `official` (absent from snapshots older than the flag). */
+    official?: number;
     byTheme: Record<string, number>;
   };
 }

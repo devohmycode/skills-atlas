@@ -2,6 +2,7 @@ import { Box, Text, useApp, useInput } from 'ink';
 import { useEffect, useState, type ReactNode } from 'react';
 import { AGENTS, getAgent } from '../agents.js';
 import { INSTALLED_THEME, type TreeData } from '../catalog/installed.js';
+import type { SortOrder } from '../catalog/query.js';
 import { t } from '../i18n/index.js';
 import { formatCommand, planInstall, planRemove } from '../install/plan.js';
 import type { InstallMethod, InstallOptions, Scope, Skill, Theme } from '../types.js';
@@ -29,6 +30,9 @@ export interface AppProps {
   skillsVersion: string;
   /** Skills already chosen (the `install` command): the tree is skipped. */
   initialIds?: string[];
+  /** Starting order and official filter of the tree (`--sort`, `--official`). */
+  sort?: SortOrder;
+  official?: boolean;
   /** Detects what is installed in a scope, to pre-tick it in the tree. */
   loadInstalled?: (scope: Scope) => Promise<TreeData>;
   onDone: (result: WizardResult | null) => void;
@@ -72,7 +76,7 @@ function nextStep(from: Step, preset: AppProps['preset'], a: Answers): Step {
 }
 
 export function App(props: AppProps) {
-  const { themes, skills, preset, defaults, detectedAgents = [], skillsVersion, initialIds, loadInstalled, onDone } = props;
+  const { themes, skills, preset, defaults, detectedAgents = [], skillsVersion, initialIds, loadInstalled, sort, official, onDone } = props;
   const m = t();
   const { exit } = useApp();
   const { rows } = useTerminalSize();
@@ -166,6 +170,8 @@ export function App(props: AppProps) {
           skills={tree.skills}
           installed={tree.installed}
           scope={loadInstalled ? scope ?? defaults.scope : undefined}
+          initialSort={sort}
+          initialOfficial={official}
           initialSelected={[...ids, ...installedIds.filter((id) => !removedIds.has(id))]}
           onSubmit={(sel) => {
             const chosen = new Set(sel);

@@ -1,6 +1,7 @@
 /**
  * Re-applies the taxonomy to an existing catalog without crawling, to tune
- * the rules in src/catalog/taxonomy.ts.
+ * the rules in src/catalog/taxonomy.ts. Also refreshes the official flags
+ * from officialskills.sh (kept as they are when it cannot be reached).
  *
  *   npm run reclassify [-- --sample other]   also prints 30 skills of a theme
  */
@@ -8,12 +9,18 @@ import { join } from 'node:path';
 import { classifyAll } from '../src/catalog/classify.js';
 import { compareSkills } from '../src/catalog/dedupe.js';
 import { loadCatalog, saveCatalog } from '../src/catalog/load.js';
+import { fetchOfficialOwners, markOfficial } from '../src/catalog/sources/official.js';
 import { allThemes } from '../src/catalog/taxonomy.js';
 
 const path = join('data', 'catalog.json.gz');
 const catalog = await loadCatalog(path);
 classifyAll(catalog.skills);
 catalog.skills.sort(compareSkills);
+try {
+  catalog.stats.official = markOfficial(catalog.skills, await fetchOfficialOwners(console.log));
+} catch (err) {
+  console.log(`officialskills.sh unreachable, official flags kept: ${err instanceof Error ? err.message : String(err)}`);
+}
 catalog.themes = allThemes();
 catalog.stats.byTheme = {};
 for (const s of catalog.skills) for (const t of s.themes) catalog.stats.byTheme[t] = (catalog.stats.byTheme[t] ?? 0) + 1;

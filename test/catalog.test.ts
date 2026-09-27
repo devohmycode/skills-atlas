@@ -10,7 +10,8 @@ import {
   frontmatterDescription,
   parseGitHubUrl,
 } from '../src/catalog/normalize.js';
-import { groupByTheme, querySkills, resolveTheme } from '../src/catalog/query.js';
+import { groupByTheme, querySkills, resolveTheme, sortSkills } from '../src/catalog/query.js';
+import { markOfficial, parseOfficialSitemap } from '../src/catalog/sources/official.js';
 import { langFlag, LANGUAGES, normalizeLang } from '../src/i18n/index.js';
 import { mapEntry as mapClaudePlugins } from '../src/catalog/sources/claude-plugins-dev.js';
 import { mapSearchSkill, parseSkillsSitemap } from '../src/catalog/sources/skills-sh.js';
@@ -168,6 +169,56 @@ describe('ordering', () => {
       mk('few-installs', { installs: 50 }),
     ].sort(compareSkills);
     expect(sorted.map((s) => s.id)).toEqual(['top', 'small-but-ranked', 'many-stars', 'few-installs']);
+  });
+});
+
+describe('official skills', () => {
+  it('reads official owners from the officialskills.sh sitemap, skill pages only', () => {
+    const xml = [
+      'https://officialskills.sh/',
+      'https://officialskills.sh/collections/automation',
+      'https://officialskills.sh/anthropics/skills',
+      'https://officialskills.sh/anthropics/skills/pdf',
+      'https://officialskills.sh/MiniMax-AI/skills/minimax-pdf',
+    ].map((u) => `<url><loc>${u}</loc></url>`).join('');
+    expect([...parseOfficialSitemap(xml)]).toEqual(['anthropics', 'minimax-ai']);
+  });
+
+  it('flags every skill of an official owner, case-insensitively', () => {
+    const catalog = assemble(
+      {
+        'skills.sh': [
+          { origin: 'skills.sh', name: 'pdf', source: 'Anthropics/skills', installs: 5 },
+          { origin: 'skills.sh', name: 'copycat', source: 'someone/skills', installs: 50 },
+        ],
+        'claude-plugins.dev': [],
+        smithery: [],
+      },
+      undefined,
+      new Set(['anthropics']),
+    );
+    expect(catalog.stats.official).toBe(1);
+    expect(querySkills(catalog, { official: true }).map((s) => s.name)).toEqual(['pdf']);
+    expect(markOfficial(catalog.skills, new Set())).toBe(0);
+    expect(catalog.skills.some((s) => s.official)).toBe(false);
+  });
+});
+
+describe('sorting', () => {
+  const mk = (name: string, extra: object) => ({ id: `o/r@${name}`, name, source: 'o/r', labels: [], origins: [], themes: [], ...extra });
+  const skills = [mk('ranked-first', { rank: 1, installs: 31 }), mk('beta', { installs: 900 }), mk('alpha', { stars: 5 }), mk('gamma', {})];
+
+  it('sorts by installs, stars breaking ties, and keeps the catalog order otherwise', () => {
+    expect(sortSkills(skills, 'installs').map((s) => s.name)).toEqual(['beta', 'ranked-first', 'alpha', 'gamma']);
+    expect(sortSkills(skills, 'rank').map((s) => s.name)).toEqual(['ranked-first', 'beta', 'alpha', 'gamma']);
+    expect(sortSkills(skills, 'name').map((s) => s.name)).toEqual(['alpha', 'beta', 'gamma', 'ranked-first']);
+  });
+
+  it('is applied by querySkills when asked', () => {
+    const catalog = assemble({ 'skills.sh': [], 'claude-plugins.dev': [], smithery: [] });
+    catalog.skills = skills;
+    expect(querySkills(catalog, { sort: 'installs' })[0]!.name).toBe('beta');
+    expect(querySkills(catalog)[0]!.name).toBe('ranked-first');
   });
 });
 

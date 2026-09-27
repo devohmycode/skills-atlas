@@ -3,6 +3,7 @@ import { classifyAll } from './classify.js';
 import { compareSkills, dedupe } from './dedupe.js';
 import { enrichDescriptions } from './enrich.js';
 import { fetchClaudePluginsDev } from './sources/claude-plugins-dev.js';
+import { fetchOfficialOwners, markOfficial } from './sources/official.js';
 import { fetchSkillsSh } from './sources/skills-sh.js';
 import { fetchSmithery } from './sources/smithery.js';
 import { allThemes } from './taxonomy.js';
@@ -15,9 +16,17 @@ export interface BuildOptions {
   log?: (msg: string) => void;
 }
 
-/** Classifies and sorts merged skills, then wraps them with stats. */
-export function assemble(raw: Record<Origin, RawSkill[]>, merged = dedupe(Object.values(raw).flat())): Catalog {
+/**
+ * Classifies and sorts merged skills, flags the official ones when the list
+ * of official owners is known, then wraps them with stats.
+ */
+export function assemble(
+  raw: Record<Origin, RawSkill[]>,
+  merged = dedupe(Object.values(raw).flat()),
+  officialOwners?: Set<string>,
+): Catalog {
   const skills = classifyAll(merged);
+  const official = officialOwners ? markOfficial(skills, officialOwners) : undefined;
   skills.sort(compareSkills);
   const byTheme: Record<string, number> = {};
   for (const s of skills) for (const t of s.themes) byTheme[t] = (byTheme[t] ?? 0) + 1;
@@ -33,6 +42,7 @@ export function assemble(raw: Record<Origin, RawSkill[]>, merged = dedupe(Object
         smithery: raw.smithery.length,
       },
       merged: skills.length,
+      official,
       byTheme,
     },
   };
@@ -50,6 +60,11 @@ export async function buildCatalog(opts: BuildOptions = {}): Promise<Catalog> {
     smithery: () => fetchSmithery(log),
   };
   const origins = Object.keys(jobs) as Origin[];
+  // The official flag is optional: without officialskills.sh the snapshot is still built.
+  const officialOwners = fetchOfficialOwners(log).catch((err: unknown) => {
+    log(`officialskills.sh: FAILED — ${err instanceof Error ? err.message : String(err)}`);
+    return undefined;
+  });
   const settled = await Promise.allSettled(origins.map((o) => jobs[o]()));
   const raw = {} as Record<Origin, RawSkill[]>;
   settled.forEach((r, i) => {
@@ -68,5 +83,5 @@ export async function buildCatalog(opts: BuildOptions = {}): Promise<Catalog> {
     const filled = await enrichDescriptions(merged, { max: opts.enrich, githubToken: opts.githubToken, log });
     log(`enrich: ${filled} descriptions filled`);
   }
-  return assemble(raw, merged);
+  return assemble(raw, merged, await officialOwners);
 }

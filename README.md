@@ -70,6 +70,8 @@ Translations live in `src/i18n/`. Adding a language takes one file implementing 
 | space | tick a skill, or a whole theme (unticking an installed skill uninstalls it) |
 | `/` | search (enter to keep, esc to clear) |
 | `a` | expand / collapse all |
+| `s` | sort: installs (default) → skills.sh rank → name |
+| `o` | only official skills (marked ◆) |
 | enter | continue |
 | `q` | quit |
 
@@ -85,6 +87,8 @@ Translations live in `src/i18n/`. Adding a language takes one file implementing 
 | `--skills-version <v>` | skills CLI version (default: 1.7.0, pinned) |
 | `--catalog <path\|url>` | alternative catalog |
 | `--all`, `--min-installs <n>` | include skills with no installs or stars / minimum installs |
+| `-s, --sort <order>` | `installs` (default), `rank` (skills.sh leaderboard) or `name`; also for `list` |
+| `--official` | only official skills; also for `list` and `themes` |
 | `-l, --lang <code>` | interface language, remembered |
 
 Any option left out is asked after the selection, pre-filled with your last choices (`~/.config/skills-atlas/config.json`) and the agents detected on the machine.
@@ -115,6 +119,7 @@ In a terminal, progress is shown uv-style: one line per task (uninstall, then on
 | [skills.sh](https://skills.sh) | sitemaps (the 20,000 most installed skills, in order); optionally `GET /api/search?owner=` | popularity rank; install counts for the top N owners (`--max-owners N`) |
 | [Smithery](https://smithery.ai/skills) | `registry.smithery.ai/skills`, at most 500 results per query | categories (Coding, Design, Security…) |
 | GitHub | Trees API + `raw.githubusercontent.com` | missing descriptions, read from `SKILL.md` |
+| [officialskills.sh](https://officialskills.sh) | sitemap | official publishers: every skill whose GitHub owner is listed there is flagged `official` |
 
 **Rate limits.** The skills.sh search API allows 30 requests per minute. The crawl queries it at that pace, about 2 s per owner. The daily workflow covers the top 600 owners; a local crawl covers none by default. With `VERCEL_OIDC_TOKEN`, the crawl uses the [official API](https://skills.sh/docs/api) instead, which returns the full leaderboard.
 

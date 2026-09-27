@@ -1,6 +1,6 @@
 import { Box, Text, useInput } from 'ink';
 import { useMemo, useState } from 'react';
-import { groupByTheme, haystack, popularityLabel } from '../catalog/query.js';
+import { groupByTheme, haystack, popularityLabel, SORT_ORDERS, sortSkills, type SortOrder } from '../catalog/query.js';
 import { formatNumber, t, themeLabel } from '../i18n/index.js';
 import type { Skill, Theme } from '../types.js';
 import { ACCENT, BOX, Hints, Panel, useTerminalSize } from './Layout.js';
@@ -17,12 +17,18 @@ export interface TreeSelectProps {
   installed?: Map<string, string>;
   /** Shown in the status line. */
   scope?: string;
+  /** Starting order, changed with `s`. */
+  initialSort?: SortOrder;
+  /** Start with only official skills, toggled with `o`. */
+  initialOfficial?: boolean;
   onSubmit: (ids: string[]) => void;
   onCancel: () => void;
 }
 
-/** Lines used around the list: header, status, search, details panel, hints. */
-const CHROME_LINES = 15;
+/** Lines used around the list: header, status, search, details panel, hints (may wrap). */
+const CHROME_LINES = 16;
+/** Marks official skills in the list and the details panel. */
+const OFFICIAL_MARK = '◆';
 
 function fit(text: string, width: number): string {
   if (width <= 0) return '';
@@ -38,7 +44,17 @@ function popularityLong(s: Skill): string {
   return s.rank !== undefined ? `${m.rank} #${formatNumber(s.rank)}` : '';
 }
 
-export function TreeSelect({ themes, skills, initialSelected = [], installed = new Map(), scope, onSubmit, onCancel }: TreeSelectProps) {
+export function TreeSelect({
+  themes,
+  skills,
+  initialSelected = [],
+  installed = new Map(),
+  scope,
+  initialSort = 'installs',
+  initialOfficial = false,
+  onSubmit,
+  onCancel,
+}: TreeSelectProps) {
   const m = t();
   const { columns, rows: termRows } = useTerminalSize();
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
@@ -46,13 +62,17 @@ export function TreeSelect({ themes, skills, initialSelected = [], installed = n
   const [cursor, setCursor] = useState(0);
   const [filter, setFilter] = useState('');
   const [editingFilter, setEditingFilter] = useState(false);
+  const [sort, setSort] = useState<SortOrder>(initialSort);
+  const [officialOnly, setOfficialOnly] = useState(initialOfficial);
 
   const texts = useMemo(() => new Map(skills.map((s) => [s.id, haystack(s)])), [skills]);
+  const sorted = useMemo(() => sortSkills(skills, sort), [skills, sort]);
   const visible = useMemo(() => {
     const terms = filter.toLowerCase().split(/\s+/).filter(Boolean);
-    if (!terms.length) return skills;
-    return skills.filter((s) => terms.every((term) => texts.get(s.id)!.includes(term)));
-  }, [skills, texts, filter]);
+    return sorted.filter(
+      (s) => (!officialOnly || s.official) && terms.every((term) => texts.get(s.id)!.includes(term)),
+    );
+  }, [sorted, texts, filter, officialOnly]);
   const groups = useMemo(() => groupByTheme(themes, visible), [themes, visible]);
 
   const rows = useMemo(() => {
@@ -122,7 +142,13 @@ export function TreeSelect({ themes, skills, initialSelected = [], installed = n
     } else if (input === ' ' && row) {
       toggle(row.kind === 'theme' ? row.skills.map((s) => s.id) : [row.skill.id]);
     } else if (input === '/') setEditingFilter(true);
-    else if (input === 'a') setExpanded((prev) => (prev.size ? new Set() : new Set(groups.map((g) => g.theme.id))));
+    else if (input === 's') {
+      setSort((prev) => SORT_ORDERS[(SORT_ORDERS.indexOf(prev) + 1) % SORT_ORDERS.length]!);
+      setCursor(0);
+    } else if (input === 'o') {
+      setOfficialOnly((prev) => !prev);
+      setCursor(0);
+    } else if (input === 'a') setExpanded((prev) => (prev.size ? new Set() : new Set(groups.map((g) => g.theme.id))));
     else if (key.escape && filter) setFilter('');
     else if (key.return && (toInstall > 0 || toRemove > 0)) onSubmit([...selected]);
     else if (key.return && row?.kind === 'theme') setOpen(row.theme.id, !row.expanded);
@@ -140,6 +166,8 @@ export function TreeSelect({ themes, skills, initialSelected = [], installed = n
         [m.keyNames.space, m.keys.toggle],
         ['/', m.keys.search],
         ['a', m.keys.expandAll],
+        ['s', m.keys.sort],
+        ['o', m.keys.official],
         [m.keyNames.enter, m.keys.continue],
         ['q', m.keys.quit],
       ];
@@ -161,6 +189,8 @@ export function TreeSelect({ themes, skills, initialSelected = [], installed = n
             </Text>
           )}
           {scope && <Text dimColor>{`   ${m.tree.scope(scope === 'global' ? m.scope.global : m.scope.project)}`}</Text>}
+          <Text dimColor>{`   ${m.tree.sortedBy(m.tree.sort[sort])}`}</Text>
+          {officialOnly && <Text color="blue">{`   ${OFFICIAL_MARK} ${m.tree.officialOnly}`}</Text>}
         </Text>
         <Text dimColor>{rows.length ? m.tree.position(formatNumber(current + 1), formatNumber(rows.length)) : ''}</Text>
       </Box>
@@ -203,7 +233,8 @@ export function TreeSelect({ themes, skills, initialSelected = [], installed = n
           return (
             <Text key={`s:${r.themeId}:${s.id}`} wrap="truncate-end">
               {pointer}
-              {'    '}
+              {'  '}
+              <Text color="blue">{s.official ? OFFICIAL_MARK : ' '} </Text>
               <Text color={isInstalled && !isOn ? 'red' : isOn ? 'green' : 'gray'}>{isOn ? BOX.on : BOX.off} </Text>
               <Text bold={focused} color={focused ? ACCENT : undefined}>
                 {fit(s.name, nameW)}
@@ -223,6 +254,7 @@ export function TreeSelect({ themes, skills, initialSelected = [], installed = n
               <Text wrap="truncate-end">
                 <Text bold>{row.skill.name}</Text>
                 <Text dimColor>{`  ${row.skill.source}`}</Text>
+                {row.skill.official && <Text color="blue">{`  ${OFFICIAL_MARK} ${m.tree.official}`}</Text>}
               </Text>
               <Text dimColor>{popularityLong(row.skill)}</Text>
             </Box>

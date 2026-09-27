@@ -17,6 +17,8 @@ export const fr: Messages = {
     toggle: 'cocher',
     search: 'rechercher',
     expandAll: 'tout déplier',
+    sort: 'trier',
+    official: 'officiels seulement',
     continue: 'continuer',
     choose: 'choisir',
     back: 'retour',
@@ -53,6 +55,10 @@ export const fr: Messages = {
     installs: 'installations',
     stars: 'étoiles',
     rank: 'rang skills.sh',
+    sortedBy: (o: string) => `tri : ${o}`,
+    sort: { installs: 'installations', rank: 'classement skills.sh', name: 'nom' },
+    official: 'officiel',
+    officialOnly: 'officiels seulement',
   },
 
   agents: {
@@ -115,6 +121,8 @@ export const fr: Messages = {
     search: 'filtrer par texte (id, description)',
     minInstalls: "nombre minimum d'installations",
     all: 'inclure les skills sans installations ni étoiles',
+    official: 'seulement les skills officiels (publiés par l’éditeur, selon officialskills.sh)',
+    sort: 'ordre : installs (les plus installés d’abord), rank (classement skills.sh), name',
     agent: "agents cibles (ids de `skills-atlas agents`, '*' = tous)",
     global: 'installer pour votre utilisateur (tous les projets)',
     project: 'installer dans le projet courant',

@@ -7,6 +7,24 @@ export interface QueryOptions {
   minInstalls?: number;
   /** Keep skills with no popularity signal at all (hidden by default). */
   all?: boolean;
+  /** Only skills published by the vendor itself. */
+  official?: boolean;
+  sort?: SortOrder;
+}
+
+/**
+ * `installs`: most installed first. `rank`: catalog order (skills.sh
+ * leaderboard, then installs and stars). `name`: alphabetical.
+ */
+export const SORT_ORDERS = ['installs', 'rank', 'name'] as const;
+export type SortOrder = (typeof SORT_ORDERS)[number];
+
+/** Returns a sorted copy; `rank` keeps the given (catalog) order. */
+export function sortSkills(skills: Skill[], order: SortOrder): Skill[] {
+  if (order === 'rank') return [...skills];
+  if (order === 'name') return [...skills].sort((a, b) => a.name.localeCompare(b.name) || a.source.localeCompare(b.source));
+  // Stable sort: equal counts (and skills without any) keep the catalog order.
+  return [...skills].sort((a, b) => (b.installs ?? 0) - (a.installs ?? 0) || (b.stars ?? 0) - (a.stars ?? 0));
 }
 
 /** Matches a theme by id or label in any language, case- and accent-insensitive. */
@@ -31,13 +49,15 @@ export function matchesSearch(s: Skill, search: string): boolean {
 }
 
 export function querySkills(catalog: Catalog, q: QueryOptions = {}): Skill[] {
-  return catalog.skills.filter((s) => {
+  const found = catalog.skills.filter((s) => {
+    if (q.official && !s.official) return false;
     if (!q.all && !s.installs && !s.stars && s.rank === undefined) return false;
     if (q.minInstalls && (s.installs ?? 0) < q.minInstalls) return false;
     if (q.themes?.length && !s.themes.some((t) => q.themes!.includes(t))) return false;
     if (q.search && !matchesSearch(s, q.search)) return false;
     return true;
   });
+  return q.sort ? sortSkills(found, q.sort) : found;
 }
 
 /** Groups skills under each of their themes, keeping catalog theme order. */

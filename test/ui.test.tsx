@@ -71,6 +71,33 @@ describe('TreeSelect', () => {
   });
 });
 
+describe('TreeSelect sort and official filter', () => {
+  const ranked = [
+    { ...skill('x/y@less-installed', ['frontend']), installs: 5 },
+    { ...skill('anthropics/skills@most-installed', ['frontend']), installs: 500, official: true },
+  ];
+
+  it('sorts by installs by default and cycles the order with s', async () => {
+    const { lastFrame, stdin } = render(<TreeSelect themes={themes} skills={ranked} onSubmit={() => {}} onCancel={() => {}} />);
+    await press(stdin, KEY.right);
+    expect(lastFrame()).toContain('sorted by installs');
+    expect(lastFrame()!.indexOf('most-installed')).toBeLessThan(lastFrame()!.indexOf('less-installed'));
+    await press(stdin, 's');
+    expect(lastFrame()).toContain('sorted by skills.sh rank');
+    expect(lastFrame()!.indexOf('less-installed')).toBeLessThan(lastFrame()!.indexOf('most-installed'));
+  });
+
+  it('marks official skills and shows only them with o', async () => {
+    const { lastFrame, stdin } = render(<TreeSelect themes={themes} skills={ranked} onSubmit={() => {}} onCancel={() => {}} />);
+    await press(stdin, KEY.right);
+    expect(lastFrame()).toMatch(/◆ ○ most-installed/);
+    await press(stdin, 'o');
+    expect(lastFrame()).toContain('◆ official only');
+    expect(lastFrame()).toMatch(/Frontend & web\s+1/);
+    expect(lastFrame()).not.toContain('less-installed');
+  });
+});
+
 describe('App wizard', () => {
   const defaults = { agents: ['claude-code'], scope: 'project' as const, method: 'symlink' as const };
 
