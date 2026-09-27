@@ -208,9 +208,8 @@ describe('sorting', () => {
   const mk = (name: string, extra: object) => ({ id: `o/r@${name}`, name, source: 'o/r', labels: [], origins: [], themes: [], ...extra });
   const skills = [mk('ranked-first', { rank: 1, installs: 31 }), mk('beta', { installs: 900 }), mk('alpha', { stars: 5 }), mk('gamma', {})];
 
-  it('sorts by installs, stars breaking ties, and keeps the catalog order otherwise', () => {
+  it('sorts by installs, stars breaking ties, or by name', () => {
     expect(sortSkills(skills, 'installs').map((s) => s.name)).toEqual(['beta', 'ranked-first', 'alpha', 'gamma']);
-    expect(sortSkills(skills, 'rank').map((s) => s.name)).toEqual(['ranked-first', 'beta', 'alpha', 'gamma']);
     expect(sortSkills(skills, 'name').map((s) => s.name)).toEqual(['alpha', 'beta', 'gamma', 'ranked-first']);
   });
 

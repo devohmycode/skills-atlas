@@ -2,6 +2,7 @@ import { Box, Text, useStdout } from 'ink';
 import type { ReactNode } from 'react';
 import { t } from '../i18n/index.js';
 import { logo } from './logo.js';
+import { useClick } from './mouse.js';
 
 export const ACCENT = 'cyan';
 
@@ -53,18 +54,50 @@ export function Header({ step }: { step: StepId }) {
   );
 }
 
-/** Key hints: keys in the accent color, actions dimmed. */
-export function Hints({ items }: { items: [key: string, action: string][] }) {
+/** Key, action, and what a click on it does: hints with a handler are buttons. */
+export type Hint = [key: string, action: string, onPress?: () => void];
+
+/** Key hints: keys in the accent color, actions dimmed; clickable ones framed like buttons. */
+export function Hints({ items }: { items: Hint[] }) {
   return (
-    <Box marginTop={1} flexWrap="wrap" columnGap={3}>
-      {items.map(([k, action]) => (
-        <Text key={k}>
-          <Text bold color={ACCENT}>
-            {k}
-          </Text>{' '}
-          <Text dimColor>{action}</Text>
-        </Text>
+    <Box marginTop={1} flexWrap="wrap" columnGap={1}>
+      {items.map(([k, action, onPress]) => (
+        <HintItem key={k} keyName={k} action={action} onPress={onPress} />
       ))}
+    </Box>
+  );
+}
+
+function HintItem({ keyName, action, onPress }: { keyName: string; action: string; onPress?: () => void }) {
+  const { ref, hovered } = useClick(onPress);
+  // Hovered: the whole button in reverse video, so that it reads as the thing a click will hit.
+  if (hovered)
+    return (
+      <Box ref={ref}>
+        <Text inverse bold color={ACCENT}>
+          [{keyName} {action}]
+        </Text>
+      </Box>
+    );
+  const body = (
+    <>
+      <Text bold color={ACCENT}>
+        {keyName}
+      </Text>{' '}
+      <Text dimColor={!onPress}>{action}</Text>
+    </>
+  );
+  return (
+    <Box ref={ref}>
+      {onPress ? (
+        <Text>
+          <Text color={ACCENT}>[</Text>
+          {body}
+          <Text color={ACCENT}>]</Text>
+        </Text>
+      ) : (
+        <Text>{body}</Text>
+      )}
     </Box>
   );
 }

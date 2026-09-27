@@ -8,6 +8,7 @@ import { formatCommand, planInstall, planRemovals } from '../install/plan.js';
 import { SCOPES, type InstallMethod, type InstallOptions, type Removal, type Scope, type Skill, type Theme } from '../types.js';
 import { Banner, Header, Hints, Panel, useTerminalSize, type StepId } from './Layout.js';
 import { ListSelect } from './ListSelect.js';
+import { isMouseInput } from './mouse.js';
 import { scopesLabel, TreeSelect } from './TreeSelect.js';
 
 export interface WizardResult {
@@ -270,6 +271,7 @@ interface ConfirmProps {
 function Confirm({ ids, remove, options, onConfirm, onBack }: ConfirmProps) {
   const m = t();
   useInput((input, key) => {
+    if (isMouseInput(input)) return;
     if (key.return || input === 'y') onConfirm();
     else if (key.escape || input === 'n') onBack();
   });
@@ -314,8 +316,8 @@ function Confirm({ ids, remove, options, onConfirm, onBack }: ConfirmProps) {
       </Box>
       <Hints
         items={[
-          [m.keyNames.enter, m.keys.apply],
-          [m.keyNames.esc, m.keys.back],
+          [m.keyNames.enter, m.keys.apply, onConfirm],
+          [m.keyNames.esc, m.keys.back, onBack],
         ]}
       />
     </Box>

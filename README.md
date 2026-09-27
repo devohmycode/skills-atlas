@@ -58,10 +58,12 @@ Translations live in `src/i18n/`. Adding a language takes one file implementing 
 | space | tick a skill, or a whole theme (unticking an installed skill uninstalls it) |
 | `/` | search (enter to keep, esc to clear) |
 | `a` | expand / collapse all |
-| `s` | sort: installs (default) → skills.sh rank → name |
+| `s` | sort: installs (default) ↔ name |
 | `o` | only official skills (marked ◆) |
 | enter | continue |
 | `q` | quit |
+
+The mouse works too: the wheel moves through the list, a click ticks a skill, opens a theme (or ticks the whole theme on its checkbox), and picks an answer in the next steps. The interface then runs on the terminal's alternate screen; hold Shift to select text, or start with `--no-mouse` to keep the normal screen.
 
 ### Install options
 
@@ -72,11 +74,12 @@ Translations live in `src/i18n/`. Adding a language takes one file implementing 
 | `--copy` / `--symlink` | one copy per agent, or a symlink to `.agents/skills` |
 | `-y, --yes` | no questions; `--agent` becomes required |
 | `--dry-run` | print the `npx skills` commands without running them |
+| `--no-mouse` | keyboard only: normal screen, native text selection |
 | `--skills-version <v>` | skills CLI version (default: 1.7.0, pinned) |
 | `--catalog <path\|url>` | alternative catalog |
 | `--offline` | do not download the latest catalog (also `SKILLS_ATLAS_OFFLINE=1`) |
 | `--all`, `--min-installs <n>` | include skills with no installs or stars / minimum installs |
-| `-s, --sort <order>` | `installs` (default), `rank` (skills.sh leaderboard) or `name`; also for `list` |
+| `-s, --sort <order>` | `installs` (default) or `name`; also for `list` |
 | `--official` | only official skills; also for `list` and `themes` |
 | `-l, --lang <code>` | interface language, remembered |
 

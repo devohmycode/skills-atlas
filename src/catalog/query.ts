@@ -12,16 +12,12 @@ export interface QueryOptions {
   sort?: SortOrder;
 }
 
-/**
- * `installs`: most installed first. `rank`: catalog order (skills.sh
- * leaderboard, then installs and stars). `name`: alphabetical.
- */
-export const SORT_ORDERS = ['installs', 'rank', 'name'] as const;
+/** `installs`: most installed first. `name`: alphabetical. */
+export const SORT_ORDERS = ['installs', 'name'] as const;
 export type SortOrder = (typeof SORT_ORDERS)[number];
 
-/** Returns a sorted copy; `rank` keeps the given (catalog) order. */
+/** Returns a sorted copy. */
 export function sortSkills(skills: Skill[], order: SortOrder): Skill[] {
-  if (order === 'rank') return [...skills];
   if (order === 'name') return [...skills].sort((a, b) => a.name.localeCompare(b.name) || a.source.localeCompare(b.source));
   // Stable sort: equal counts (and skills without any) keep the catalog order.
   return [...skills].sort((a, b) => (b.installs ?? 0) - (a.installs ?? 0) || (b.stars ?? 0) - (a.stars ?? 0));

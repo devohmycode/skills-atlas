@@ -4,7 +4,8 @@ import { groupByTheme, haystack, popularityLabel, SORT_ORDERS, sortSkills, type 
 import { formatNumber, t, themeLabel } from '../i18n/index.js';
 import type { InstalledEntry } from '../catalog/installed.js';
 import type { Scope, Skill, Theme } from '../types.js';
-import { ACCENT, BOX, Hints, Panel, useTerminalSize } from './Layout.js';
+import { ACCENT, BOX, Hints, Panel, useTerminalSize, type Hint } from './Layout.js';
+import { isMouseInput, useListMouse } from './mouse.js';
 
 type Row =
   | { kind: 'theme'; theme: Theme; skills: Skill[]; expanded: boolean }
@@ -28,6 +29,10 @@ export interface TreeSelectProps {
 
 /** Lines used around the list: header, status, search, details panel, hints (may wrap). */
 const CHROME_LINES = 16;
+/** Lines moved by one wheel notch. */
+const WHEEL_STEP = 3;
+/** Clicks up to this screen column on a theme row hit its checkbox (padding, pointer, arrow, box). */
+const THEME_BOX_COLUMN = 7;
 /** Marks official skills in the list and the details panel. */
 const OFFICIAL_MARK = '◆';
 
@@ -125,13 +130,47 @@ export function TreeSelect({
       return next;
     });
 
+  // Actions shared by the keys and the buttons of the hint bar.
+  const canSubmit = toInstall > 0 || toRemove > 0;
+  const submit = () => onSubmit([...selected]);
+  const startSearch = () => setEditingFilter(true);
+  const endSearch = () => setEditingFilter(false);
+  const clearSearch = () => {
+    setFilter('');
+    setEditingFilter(false);
+    setCursor(0);
+  };
+  const cycleSort = () => {
+    setSort((prev) => SORT_ORDERS[(SORT_ORDERS.indexOf(prev) + 1) % SORT_ORDERS.length]!);
+    setCursor(0);
+  };
+  const toggleOfficial = () => {
+    setOfficialOnly((prev) => !prev);
+    setCursor(0);
+  };
+  const toggleAll = () => setExpanded((prev) => (prev.size ? new Set() : new Set(groups.map((g) => g.theme.id))));
+
+  // Wheel moves the cursor; a click ticks a skill, or opens a theme (ticks it on its checkbox).
+  const { ref: listRef, hover } = useListMouse(Math.min(height, rows.length - top), (e) => {
+    if (e.kind === 'wheelUp') move(-WHEEL_STEP);
+    else if (e.kind === 'wheelDown') move(WHEEL_STEP);
+    if (e.kind !== 'click' || e.line < 0 || e.line >= height) return;
+    const index = top + e.line;
+    const r = rows[index];
+    if (!r) return;
+    setEditingFilter(false);
+    setCursor(index);
+    if (r.kind === 'skill') toggle([r.skill.id]);
+    else if (e.x <= THEME_BOX_COLUMN) toggle(r.skills.map((s) => s.id));
+    else setOpen(r.theme.id, !r.expanded);
+  });
+
   useInput((input, key) => {
+    if (isMouseInput(input)) return;
     if (editingFilter) {
-      if (key.return) setEditingFilter(false);
-      else if (key.escape) {
-        setFilter('');
-        setEditingFilter(false);
-      } else if (key.backspace || key.delete) setFilter((f) => f.slice(0, -1));
+      if (key.return) endSearch();
+      else if (key.escape) clearSearch();
+      else if (key.backspace || key.delete) setFilter((f) => f.slice(0, -1));
       else if (input && !key.ctrl && !key.meta) setFilter((f) => f + input);
       setCursor(0);
       return;
@@ -147,35 +186,31 @@ export function TreeSelect({
       setCursor(rows.findIndex((r) => r.kind === 'theme' && r.theme.id === themeId));
     } else if (input === ' ' && row) {
       toggle(row.kind === 'theme' ? row.skills.map((s) => s.id) : [row.skill.id]);
-    } else if (input === '/') setEditingFilter(true);
-    else if (input === 's') {
-      setSort((prev) => SORT_ORDERS[(SORT_ORDERS.indexOf(prev) + 1) % SORT_ORDERS.length]!);
-      setCursor(0);
-    } else if (input === 'o') {
-      setOfficialOnly((prev) => !prev);
-      setCursor(0);
-    } else if (input === 'a') setExpanded((prev) => (prev.size ? new Set() : new Set(groups.map((g) => g.theme.id))));
+    } else if (input === '/') startSearch();
+    else if (input === 's') cycleSort();
+    else if (input === 'o') toggleOfficial();
+    else if (input === 'a') toggleAll();
     else if (key.escape && filter) setFilter('');
-    else if (key.return && (toInstall > 0 || toRemove > 0)) onSubmit([...selected]);
+    else if (key.return && canSubmit) submit();
     else if (key.return && row?.kind === 'theme') setOpen(row.theme.id, !row.expanded);
     else if (input === 'q' || key.escape) onCancel();
   });
 
-  const hints: [string, string][] = editingFilter
+  // Buttons do what their key does; continue is only clickable once something changes.
+  const hints: Hint[] = editingFilter
     ? [
-        [m.keyNames.enter, m.keys.done],
-        [m.keyNames.esc, m.keys.clear],
+        [m.keyNames.enter, m.keys.done, endSearch],
+        [m.keyNames.esc, m.keys.clear, clearSearch],
       ]
     : [
-        ['↑↓', m.keys.move],
-        ['→←', `${m.keys.expand}/${m.keys.collapse}`],
         [m.keyNames.space, m.keys.toggle],
-        ['/', m.keys.search],
-        ['a', m.keys.expandAll],
-        ['s', m.keys.sort],
-        ['o', m.keys.official],
-        [m.keyNames.enter, m.keys.continue],
-        ['q', m.keys.quit],
+        ['/', m.keys.search, startSearch],
+        ...(filter ? [[m.keyNames.esc, m.keys.clear, clearSearch] as Hint] : []),
+        ['a', m.keys.expandAll, toggleAll],
+        ['s', m.keys.sort, cycleSort],
+        ['o', m.keys.official, toggleOfficial],
+        [m.keyNames.enter, m.keys.continue, canSubmit ? submit : undefined],
+        ['q', m.keys.quit, onCancel],
       ];
 
   return (
@@ -208,10 +243,12 @@ export function TreeSelect({
         {editingFilter && <Text color={ACCENT}>▌</Text>}
       </Text>
 
-      <Box flexDirection="column" height={height} marginTop={1}>
+      <Box ref={listRef} flexDirection="column" height={height} marginTop={1}>
         {rows.slice(top, top + height).map((r, i) => {
           const focused = top + i === current;
-          const pointer = <Text color={ACCENT}>{focused ? '❯ ' : '  '}</Text>;
+          // Under the mouse: a lighter pointer and an underlined name, the row a click will hit.
+          const hovered = i === hover && !focused;
+          const pointer = <Text color={ACCENT}>{focused ? '❯ ' : hovered ? '› ' : '  '}</Text>;
           if (r.kind === 'theme') {
             const n = r.skills.filter((s) => selected.has(s.id)).length;
             const box = n === 0 ? BOX.off : n === r.skills.length ? BOX.on : BOX.some;
@@ -221,7 +258,7 @@ export function TreeSelect({
                   {pointer}
                   <Text dimColor>{r.expanded ? '▾ ' : '▸ '}</Text>
                   <Text color={n ? 'green' : undefined}>{box} </Text>
-                  <Text bold color={focused ? ACCENT : undefined}>
+                  <Text bold underline={hovered} color={focused || hovered ? ACCENT : undefined}>
                     {themeLabel(r.theme)}
                   </Text>
                 </Text>
@@ -243,7 +280,7 @@ export function TreeSelect({
               {'  '}
               <Text color="blue">{s.official ? OFFICIAL_MARK : ' '} </Text>
               <Text color={isInstalled && !isOn ? 'red' : isOn ? 'green' : 'gray'}>{isOn ? BOX.on : BOX.off} </Text>
-              <Text bold={focused} color={focused ? ACCENT : undefined}>
+              <Text bold={focused} underline={hovered} color={focused || hovered ? ACCENT : undefined}>
                 {fit(s.name, nameW)}
               </Text>
               <Text dimColor>{`  ${fit(s.source, sourceW)}`}</Text>

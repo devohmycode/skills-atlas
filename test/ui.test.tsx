@@ -4,6 +4,8 @@ import { mergeInstalled } from '../src/catalog/installed.js';
 import { setLang } from '../src/i18n/index.js';
 import type { Skill, Theme } from '../src/types.js';
 import { App, type WizardResult } from '../src/ui/App.js';
+import { ListSelect } from '../src/ui/ListSelect.js';
+import { parseMouse } from '../src/ui/mouse.js';
 import { TreeSelect } from '../src/ui/TreeSelect.js';
 
 const themes: Theme[] = [
@@ -71,6 +73,123 @@ describe('TreeSelect', () => {
   });
 });
 
+/** SGR mouse report: left press, release, or wheel at a 1-based column and line. */
+const mouse = (button: number, x: number, y: number, final = 'M') => `\u001B[<${button};${x};${y}${final}`;
+const click = (x: number, y: number) => mouse(0, x, y);
+/** Click on the first occurrence of `text` in a frame, as a mouse user would. */
+const clickOn = (frame: string | undefined, text: string) => {
+  const lines = (frame ?? '').split('\n');
+  const y = lines.findIndex((l) => l.includes(text));
+  if (y < 0) throw new Error(`"${text}" is not on screen`);
+  return click(lines[y]!.indexOf(text) + 2, y + 1);
+};
+/** Standalone tree: status, search, blank line, then the list from screen line 4. */
+const LIST_Y = 4;
+
+describe('mouse', () => {
+  it('parses SGR reports', () => {
+    expect(parseMouse(mouse(0, 12, 7))).toEqual({ kind: 'click', x: 12, y: 7 });
+    expect(parseMouse(mouse(0, 12, 7, 'm'))?.kind).toBe('release');
+    expect(parseMouse('[<64;1;1M')?.kind).toBe('wheelUp');
+    expect(parseMouse(mouse(65 | 4, 1, 1))?.kind).toBe('wheelDown');
+    expect(parseMouse('\u001B[A')).toBeUndefined();
+  });
+
+  it('marks the row under the mouse', async () => {
+    const { lastFrame, stdin } = render(<TreeSelect themes={themes} skills={skills} onSubmit={() => {}} onCancel={() => {}} />);
+    expect(parseMouse(mouse(35, 3, 4))).toEqual({ kind: 'move', x: 3, y: 4 });
+    await press(stdin, mouse(35, 20, LIST_Y + 1));
+    expect(lastFrame()).toMatch(/› ▸ ○ Security/);
+    await press(stdin, mouse(35, 20, 1));
+    expect(lastFrame()).not.toContain('›');
+  });
+
+  it('opens a theme and ticks a skill on click', async () => {
+    const onSubmit = vi.fn();
+    const { lastFrame, stdin } = render(<TreeSelect themes={themes} skills={skills} onSubmit={onSubmit} onCancel={() => {}} />);
+    await press(stdin, click(20, LIST_Y));
+    expect(lastFrame()).toContain('▾ ○ Frontend & web');
+    await press(stdin, click(20, LIST_Y + 2));
+    expect(lastFrame()).toContain('◉ tailwind');
+    expect(lastFrame()).toContain('1 selected');
+    await press(stdin, KEY.enter);
+    expect(onSubmit).toHaveBeenCalledWith(['a/b@tailwind']);
+  });
+
+  it('ticks a whole theme on its checkbox and scrolls with the wheel', async () => {
+    const { lastFrame, stdin } = render(<TreeSelect themes={themes} skills={skills} onSubmit={() => {}} onCancel={() => {}} />);
+    await press(stdin, click(5, LIST_Y));
+    expect(lastFrame()).toContain('◉ Frontend & web');
+    expect(lastFrame()).toContain('▸');
+    await press(stdin, mouse(65, 1, 1));
+    expect(lastFrame()).toMatch(/❯ .*Security/);
+  });
+
+  it('continues from the tree with the continue button, only once something is ticked', async () => {
+    const onSubmit = vi.fn();
+    const onCancel = vi.fn();
+    const { lastFrame, stdin } = render(<TreeSelect themes={themes} skills={skills} onSubmit={onSubmit} onCancel={onCancel} />);
+    await press(stdin, clickOn(lastFrame(), '↵ next'));
+    expect(onSubmit).not.toHaveBeenCalled();
+    await press(stdin, click(5, LIST_Y));
+    expect(lastFrame()).toContain('[↵ next]');
+    await press(stdin, clickOn(lastFrame(), '↵ next'));
+    expect(onSubmit).toHaveBeenCalledWith(['a/b@react-hooks', 'a/b@tailwind']);
+    await press(stdin, clickOn(lastFrame(), 'q quit'));
+    expect(onCancel).toHaveBeenCalled();
+  });
+
+  it('sorts and filters official skills from the buttons', async () => {
+    const { lastFrame, stdin } = render(<TreeSelect themes={themes} skills={skills} onSubmit={() => {}} onCancel={() => {}} />);
+    await press(stdin, clickOn(lastFrame(), 's sort'));
+    expect(lastFrame()).toContain('sorted by name');
+    await press(stdin, clickOn(lastFrame(), 'o official'));
+    expect(lastFrame()).toContain('official only');
+  });
+
+  it('goes through the wizard with the mouse only', async () => {
+    let result: WizardResult | null | undefined;
+    const { lastFrame, stdin } = render(
+      <App
+        themes={themes}
+        skills={skills}
+        preset={{}}
+        defaults={{ agents: ['claude-code'], scope: 'project', method: 'symlink' }}
+        skillsVersion="1.7.0"
+        onDone={(r) => (result = r)}
+      />,
+    );
+    await tick();
+    await press(stdin, clickOn(lastFrame(), 'Security'));
+    await press(stdin, clickOn(lastFrame(), '○ pentest'));
+    await press(stdin, clickOn(lastFrame(), '↵ next'));
+    await press(stdin, clickOn(lastFrame(), 'Global'));
+    await press(stdin, clickOn(lastFrame(), '↵ next'));
+    expect(lastFrame()).toContain('pentest');
+    await press(stdin, clickOn(lastFrame(), '↵ apply'));
+    expect(result?.ids).toEqual(['c/d@pentest']);
+    expect(result?.options.scope).toBe('global');
+  });
+
+  it('chooses an item of a single list on click, without typing into the filter', async () => {
+    const onSubmit = vi.fn();
+    const { stdin } = render(
+      <ListSelect
+        title="Where?"
+        items={[
+          { value: 'project', label: 'Project' },
+          { value: 'global', label: 'Global' },
+        ]}
+        onSubmit={onSubmit}
+        onCancel={() => {}}
+      />,
+    );
+    // Title, blank line, then the items.
+    await press(stdin, click(4, 4));
+    expect(onSubmit).toHaveBeenCalledWith(['global']);
+  });
+});
+
 describe('TreeSelect sort and official filter', () => {
   const ranked = [
     { ...skill('x/y@less-installed', ['frontend']), installs: 5 },
@@ -83,7 +202,7 @@ describe('TreeSelect sort and official filter', () => {
     expect(lastFrame()).toContain('sorted by installs');
     expect(lastFrame()!.indexOf('most-installed')).toBeLessThan(lastFrame()!.indexOf('less-installed'));
     await press(stdin, 's');
-    expect(lastFrame()).toContain('sorted by skills.sh rank');
+    expect(lastFrame()).toContain('sorted by name');
     expect(lastFrame()!.indexOf('less-installed')).toBeLessThan(lastFrame()!.indexOf('most-installed'));
   });
 

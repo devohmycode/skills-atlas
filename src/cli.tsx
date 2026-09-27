@@ -15,6 +15,7 @@ import type { Catalog, InstallMethod, InstallOptions, Removal, Scope } from './t
 import { App, type WizardResult } from './ui/App.js';
 import { Progress } from './ui/Progress.js';
 import { logo } from './ui/logo.js';
+import { enableMouse } from './ui/mouse.js';
 
 /** Version of the `skills` CLI driven by default; its flags are the contract we rely on. */
 const SKILLS_VERSION = '1.7.0';
@@ -45,6 +46,8 @@ interface InstallFlags {
   yes?: boolean;
   dryRun?: boolean;
   verbose?: boolean;
+  /** `--no-mouse` sets it to false. */
+  mouse: boolean;
   skillsVersion: string;
 }
 
@@ -238,6 +241,7 @@ const installOptions = (cmd: Command) =>
     .option('-y, --yes', c.yes)
     .option('--dry-run', c.dryRun)
     .option('--verbose', c.verbose)
+    .option('--no-mouse', c.noMouse)
     .option('--skills-version <version>', c.skillsVersion, SKILLS_VERSION);
 
 filterOptions(installOptions(program.command('browse', { isDefault: true })))
@@ -252,6 +256,7 @@ filterOptions(installOptions(program.command('browse', { isDefault: true })))
     const loadInstalled = async (scopes: Scope[]) =>
       mergeInstalled(catalog.skills, skills, (await Promise.all(scopes.map((sc) => listInstalled(sc)))).flat());
     let result: WizardResult | null = null;
+    const restoreScreen = opts.mouse ? enableMouse() : () => {};
     const app = render(
       <App
         themes={catalog.themes}
@@ -267,6 +272,7 @@ filterOptions(installOptions(program.command('browse', { isDefault: true })))
       />,
     );
     await app.waitUntilExit();
+    restoreScreen();
     releaseStdin();
     const chosen = result as WizardResult | null;
     if (!chosen) return console.log(paint('dim', m.run.noChange));
@@ -362,6 +368,7 @@ installOptions(program.command('install'))
     } else {
       // Ask only for what the flags left open; the tree is skipped.
       let result: WizardResult | null = null;
+      const restoreScreen = opts.mouse ? enableMouse() : () => {};
       const app = render(
         <App
           themes={[]}
@@ -375,6 +382,7 @@ installOptions(program.command('install'))
         />,
       );
       await app.waitUntilExit();
+      restoreScreen();
       releaseStdin();
       const chosen = result as WizardResult | null;
       if (!chosen) return;
