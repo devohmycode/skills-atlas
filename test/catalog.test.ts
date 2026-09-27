@@ -13,6 +13,7 @@ import {
 import { groupByTheme, querySkills, resolveTheme, sortSkills } from '../src/catalog/query.js';
 import { markOfficial, parseOfficialSitemap } from '../src/catalog/sources/official.js';
 import { langFlag, LANGUAGES, normalizeLang } from '../src/i18n/index.js';
+import { allThemes } from '../src/catalog/taxonomy.js';
 import { mapEntry as mapClaudePlugins } from '../src/catalog/sources/claude-plugins-dev.js';
 import { mapSearchSkill, parseSkillsSitemap } from '../src/catalog/sources/skills-sh.js';
 import { mapEntry as mapSmithery } from '../src/catalog/sources/smithery.js';
@@ -312,10 +313,11 @@ describe('i18n', () => {
     expect(langFlag(['-l'])).toBe('');
   });
 
-  it('translates every theme in every language', () => {
-    const ids = [...Object.keys(LANGUAGES.en.themes)];
-    for (const messages of Object.values(LANGUAGES)) {
-      for (const id of ids) expect(messages.themes[id], id).toBeTruthy();
+  it('translates every theme of the taxonomy in every language', () => {
+    // From the taxonomy, not from English: a new theme must be translated everywhere.
+    const ids = [INSTALLED_THEME, ...allThemes()].map((th) => th.id);
+    for (const [lang, messages] of Object.entries(LANGUAGES)) {
+      for (const id of ids) expect(messages.themes[id], `${lang}: ${id}`).toBeTruthy();
     }
   });
 });
