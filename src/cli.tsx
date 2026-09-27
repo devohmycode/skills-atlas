@@ -16,6 +16,7 @@ import { App, type WizardResult } from './ui/App.js';
 import { Progress } from './ui/Progress.js';
 import { logo } from './ui/logo.js';
 import { enableMouse } from './ui/mouse.js';
+import { openBrowser, startServer } from './web/server.js';
 
 /** Version of the `skills` CLI driven by default; its flags are the contract we rely on. */
 const SKILLS_VERSION = '1.7.0';
@@ -301,6 +302,31 @@ filterOptions(program.command('list'))
         console.log(`  ${s.id.padEnd(60)} ${paint('dim', popularityLabel(s))}`);
       }
     }
+  });
+
+program
+  .command('ui')
+  .description(c.ui)
+  .option('--port <n>', c.port, (v) => Number.parseInt(v, 10))
+  .option('--no-open', c.noOpen)
+  .option('--skills-version <version>', c.skillsVersion, SKILLS_VERSION)
+  .addOption(catalogOption())
+  .addOption(offlineOption())
+  .action(async (opts: CommonOptions & { port?: number; open: boolean; skillsVersion: string }) => {
+    const catalog = await openCatalog(opts);
+    const server = await startServer({
+      skills: querySkills(catalog, {}),
+      catalogSkills: catalog.skills,
+      themes: catalog.themes,
+      skillsVersion: opts.skillsVersion,
+      port: opts.port,
+    }).catch((err: unknown) => fail(err instanceof Error ? err.message : String(err)));
+    const w = t().web;
+    console.log(`\n  ${w.serving} ${paint(['bold', 'cyan'], server.url)}\n  ${paint('dim', w.stop)}\n`);
+    if (opts.open) openBrowser(server.url);
+    // Serves until Ctrl+C.
+    await new Promise<void>((resolve) => process.once('SIGINT', () => resolve()));
+    await server.close();
   });
 
 program
