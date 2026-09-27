@@ -1,20 +1,8 @@
-# skills-atlas
+<h1 align="center"><img src="https://raw.githubusercontent.com/devohmycode/skills-atlas/main/docs/logo.png" alt="skills-atlas" width="600"></h1>
 
 Browse **every public Agent Skill** (`SKILL.md` format) grouped by theme in a collapsible tree, tick several and install them in one go through [`npx skills add`](https://github.com/vercel-labs/skills), without its interactive prompts. Skills already installed come pre-ticked: untick one to uninstall it.
 
-```
- SKILLS ATLAS  ·  ● Select  ›  ○ Scope  ›  ○ Agents  ›  ○ Method  ›  ○ Confirm
-
- 71,571 skills   ◉ 3 selected   +2 −0   scope: project + global                 4 / 3,691
- / search:
-
-   ▸ ◉ Already installed                                              1 ✓         1
-   ▾ ◐ Frontend & web                                                 2 ✓     3,672
-       ◉ frontend-design              anthropics/skills                     ↓924.2k
- ❯     ○ agent-browser                vercel-labs/agent-browser             ↓870.8k
-       ◉ vercel-react-best-practices  vercel-labs/agent-skills              ↓744.3k
-   ▸ ○ Backend & APIs                                                         3,859
-```
+![The skills-atlas tree: themes with their skill counts, installed skills ticked, keys at the bottom](https://raw.githubusercontent.com/devohmycode/skills-atlas/main/docs/screenshot.png)
 
 ## Installation
 
