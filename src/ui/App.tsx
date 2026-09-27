@@ -4,17 +4,17 @@ import { AGENTS, getAgent } from '../agents.js';
 import { INSTALLED_THEME, type TreeData } from '../catalog/installed.js';
 import type { SortOrder } from '../catalog/query.js';
 import { t } from '../i18n/index.js';
-import { formatCommand, planInstall, planRemove } from '../install/plan.js';
-import type { InstallMethod, InstallOptions, Scope, Skill, Theme } from '../types.js';
+import { formatCommand, planInstall, planRemovals } from '../install/plan.js';
+import { SCOPES, type InstallMethod, type InstallOptions, type Removal, type Scope, type Skill, type Theme } from '../types.js';
 import { Banner, Header, Hints, Panel, useTerminalSize, type StepId } from './Layout.js';
 import { ListSelect } from './ListSelect.js';
-import { TreeSelect } from './TreeSelect.js';
+import { scopesLabel, TreeSelect } from './TreeSelect.js';
 
 export interface WizardResult {
   /** Skills to install (`owner/repo@name`). */
   ids: string[];
-  /** Names of installed skills to uninstall. */
-  remove: string[];
+  /** Installed skills to uninstall, from every scope they are in. */
+  remove: Removal[];
   options: InstallOptions;
 }
 
@@ -33,17 +33,17 @@ export interface AppProps {
   /** Starting order and official filter of the tree (`--sort`, `--official`). */
   sort?: SortOrder;
   official?: boolean;
-  /** Detects what is installed in a scope, to pre-tick it in the tree. */
-  loadInstalled?: (scope: Scope) => Promise<TreeData>;
+  /** Detects what is installed in these scopes, to pre-tick it in the tree. */
+  loadInstalled?: (scopes: Scope[]) => Promise<TreeData>;
   onDone: (result: WizardResult | null) => void;
 }
 
-type Step = 'scope' | 'loading' | 'tree' | 'agents' | 'method' | 'confirm';
-const ORDER: Step[] = ['scope', 'loading', 'tree', 'agents', 'method', 'confirm'];
+type Step = 'loading' | 'tree' | 'scope' | 'agents' | 'method' | 'confirm';
+const ORDER: Step[] = ['loading', 'tree', 'scope', 'agents', 'method', 'confirm'];
 const STEP_OF: Record<Step, StepId> = {
-  scope: 'scope',
-  loading: 'scope',
+  loading: 'select',
   tree: 'select',
+  scope: 'scope',
   agents: 'agents',
   method: 'method',
   confirm: 'confirm',
@@ -63,12 +63,12 @@ interface Answers {
   agents?: string[];
 }
 
-/** First step after `from` that still needs an answer. */
-function nextStep(from: Step, preset: AppProps['preset'], a: Answers): Step {
-  for (const s of ORDER.slice(ORDER.indexOf(from) + 1)) {
-    if (s === 'scope' && !preset.scope) return s;
+/** First step after `from` (or the very first one) that still needs an answer. */
+function nextStep(from: Step | undefined, preset: AppProps['preset'], a: Answers): Step {
+  for (const s of ORDER.slice(from ? ORDER.indexOf(from) + 1 : 0)) {
     if ((s === 'loading' || s === 'tree') && a.hasTree) return s;
-    // Agents and method only matter for skills to install, not for removals.
+    // Scope, agents and method only matter for skills to install, not for removals.
+    if (s === 'scope' && !preset.scope && a.installs > 0) return s;
     if (s === 'agents' && !preset.agents && a.installs > 0) return s;
     if (s === 'method' && !preset.method && a.installs > 0 && a.agents && needsMethod(a.agents)) return s;
   }
@@ -82,26 +82,33 @@ export function App(props: AppProps) {
   const { rows } = useTerminalSize();
   const hasTree = !initialIds;
   const [ids, setIds] = useState<string[]>(initialIds ?? []);
-  const [removals, setRemovals] = useState<string[]>([]);
+  const [removals, setRemovals] = useState<Removal[]>([]);
   const [agents, setAgents] = useState<string[] | undefined>(preset.agents);
   const [scope, setScope] = useState<Scope | undefined>(preset.scope);
   const [method, setMethod] = useState<InstallMethod | undefined>(preset.method);
   const [tree, setTree] = useState<TreeData>({ skills, installed: new Map() });
   const [error, setError] = useState<string>();
   const answers = (over: Partial<Answers> = {}): Answers => ({ hasTree, installs: ids.length, agents, ...over });
-  const [step, setStep] = useState<Step>(() => (preset.scope ? nextStep('scope', preset, answers()) : 'scope'));
+  const [step, setStep] = useState<Step>(() => nextStep(undefined, preset, answers()));
+  /** Steps shown so far, for going back; leaving the first one quits. */
+  const [history, setHistory] = useState<Step[]>([]);
+  /** Installed skills are read in the scope given as a flag, else in both. */
+  const readScopes = preset.scope ? [preset.scope] : SCOPES;
 
   const finish = (result: WizardResult | null) => {
     onDone(result);
     exit();
   };
-  const next = (from: Step, over?: Partial<Answers>) => setStep(nextStep(from, preset, answers(over)));
-  /** Going back to a step that was skipped (preset, no tree) leaves the wizard. */
-  const back = (to: 'scope' | 'tree' | 'agents') => {
-    if ((to === 'tree' && !hasTree) || (to === 'scope' && preset.scope)) finish(null);
-    else setStep(to);
+  const next = (from: Step, over?: Partial<Answers>) => {
+    if (from !== 'loading') setHistory((h) => [...h, from]);
+    setStep(nextStep(from, preset, answers(over)));
   };
-  const backFromOptions = () => back(hasTree ? 'tree' : 'scope');
+  const back = () => {
+    const previous = history.at(-1);
+    if (!previous) return finish(null);
+    setHistory((h) => h.slice(0, -1));
+    setStep(previous);
+  };
 
   // Detects installed skills once the scope is known, then opens the tree.
   useEffect(() => {
@@ -111,16 +118,16 @@ export function App(props: AppProps) {
       return;
     }
     let live = true;
-    loadInstalled(scope ?? defaults.scope)
+    loadInstalled(readScopes)
       .then((data) => {
         if (!live) return;
         setTree(data);
-        setStep('tree');
+        next('loading');
       })
       .catch((err: unknown) => {
         if (!live) return;
         setError(m.detectFailed(err instanceof Error ? err.message : String(err)));
-        setStep('tree');
+        next('loading');
       });
     return () => {
       live = false;
@@ -130,11 +137,45 @@ export function App(props: AppProps) {
   /** Every screen: header with the steps, the logo on the first ones, then the content. */
   const screen = (content: ReactNode) => (
     <Box flexDirection="column" paddingX={1} paddingTop={1}>
-      {(step === 'scope' || step === 'loading') && rows >= BANNER_MIN_ROWS && <Banner />}
+      {step !== 'tree' && history.length === 0 && rows >= BANNER_MIN_ROWS && <Banner />}
       <Header step={STEP_OF[step]} />
       {content}
     </Box>
   );
+
+  if (step === 'loading') {
+    return screen(<Text color="yellow">{m.loading(scopesLabel(readScopes))}</Text>);
+  }
+
+  if (step === 'tree') {
+    const installedIds = [...tree.installed.keys()];
+    const removedIds = new Set(installedIds.filter((id) => removals.some((r) => r.name === tree.installed.get(id)!.name)));
+    return screen(
+      <Box flexDirection="column">
+        {error && <Text color="red">{error}</Text>}
+        <TreeSelect
+          themes={tree.installed.size ? [INSTALLED_THEME, ...themes] : themes}
+          skills={tree.skills}
+          installed={tree.installed}
+          scopes={loadInstalled ? readScopes : undefined}
+          initialSort={sort}
+          initialOfficial={official}
+          initialSelected={[...ids, ...installedIds.filter((id) => !removedIds.has(id))]}
+          onSubmit={(sel) => {
+            const chosen = new Set(sel);
+            const toInstall = sel.filter((id) => !tree.installed.has(id));
+            const toRemove = installedIds.filter((id) => !chosen.has(id)).map((id) => tree.installed.get(id)!);
+            if (!toInstall.length && !toRemove.length) return finish(null);
+            setIds(toInstall);
+            // An unticked skill is uninstalled from every scope it was found in.
+            setRemovals(toRemove.map((e) => ({ name: e.name, scopes: [...e.scopes] })));
+            next('tree', { installs: toInstall.length });
+          }}
+          onCancel={() => finish(null)}
+        />
+      </Box>,
+    );
+  }
 
   if (step === 'scope') {
     return screen(
@@ -150,41 +191,8 @@ export function App(props: AppProps) {
           setScope(value);
           next('scope');
         }}
-        onCancel={() => finish(null)}
+        onCancel={back}
       />,
-    );
-  }
-
-  if (step === 'loading') {
-    return screen(<Text color="yellow">{m.loading(scope ?? defaults.scope)}</Text>);
-  }
-
-  if (step === 'tree') {
-    const installedIds = [...tree.installed.keys()];
-    const removedIds = new Set(installedIds.filter((id) => removals.includes(tree.installed.get(id)!)));
-    return screen(
-      <Box flexDirection="column">
-        {error && <Text color="red">{error}</Text>}
-        <TreeSelect
-          themes={tree.installed.size ? [INSTALLED_THEME, ...themes] : themes}
-          skills={tree.skills}
-          installed={tree.installed}
-          scope={loadInstalled ? scope ?? defaults.scope : undefined}
-          initialSort={sort}
-          initialOfficial={official}
-          initialSelected={[...ids, ...installedIds.filter((id) => !removedIds.has(id))]}
-          onSubmit={(sel) => {
-            const chosen = new Set(sel);
-            const toInstall = sel.filter((id) => !tree.installed.has(id));
-            const toRemove = installedIds.filter((id) => !chosen.has(id)).map((id) => tree.installed.get(id)!);
-            if (!toInstall.length && !toRemove.length) return finish(null);
-            setIds(toInstall);
-            setRemovals(toRemove);
-            next('tree', { installs: toInstall.length });
-          }}
-          onCancel={() => finish(null)}
-        />
-      </Box>,
     );
   }
 
@@ -210,7 +218,7 @@ export function App(props: AppProps) {
           setAgents(chosen);
           next('agents', { agents: chosen });
         }}
-        onCancel={backFromOptions}
+        onCancel={back}
       />,
     );
   }
@@ -229,7 +237,7 @@ export function App(props: AppProps) {
           setMethod(value);
           next('method');
         }}
-        onCancel={() => (preset.agents ? backFromOptions() : back('agents'))}
+        onCancel={back}
       />,
     );
   }
@@ -246,14 +254,14 @@ export function App(props: AppProps) {
       remove={removals}
       options={options}
       onConfirm={() => finish({ ids, remove: removals, options })}
-      onBack={backFromOptions}
+      onBack={back}
     />,
   );
 }
 
 interface ConfirmProps {
   ids: string[];
-  remove: string[];
+  remove: Removal[];
   options: InstallOptions;
   onConfirm: () => void;
   onBack: () => void;
@@ -265,7 +273,7 @@ function Confirm({ ids, remove, options, onConfirm, onBack }: ConfirmProps) {
     if (key.return || input === 'y') onConfirm();
     else if (key.escape || input === 'n') onBack();
   });
-  const removeCommands = planRemove(remove, options);
+  const removeCommands = planRemovals(remove, options.skillsVersion);
   const addCommands = ids.length ? planInstall(ids, options) : [];
   const row = (label: string, value: string) => (
     <Text>
@@ -278,7 +286,7 @@ function Confirm({ ids, remove, options, onConfirm, onBack }: ConfirmProps) {
       <Text bold>{m.confirm.title}</Text>
       {remove.length > 0 && (
         <Panel color="red" title={`− ${m.confirm.remove(remove.length)}`}>
-          <Text wrap="wrap">{remove.join('  ·  ')}</Text>
+          <Text wrap="wrap">{remove.map((r) => `${r.name} (${scopesLabel(r.scopes)})`).join('  ·  ')}</Text>
         </Panel>
       )}
       {ids.length > 0 && (
@@ -292,7 +300,7 @@ function Confirm({ ids, remove, options, onConfirm, onBack }: ConfirmProps) {
         </Panel>
       )}
       <Box flexDirection="column">
-        {row(m.confirm.scope, options.scope === 'global' ? m.scope.global : m.scope.project)}
+        {ids.length > 0 && row(m.confirm.scope, options.scope === 'global' ? m.scope.global : m.scope.project)}
         {ids.length > 0 && row(m.confirm.agents, options.agents.join(', '))}
         {ids.length > 0 && row(m.confirm.method, options.method === 'copy' ? m.method.copy : m.method.symlink)}
       </Box>

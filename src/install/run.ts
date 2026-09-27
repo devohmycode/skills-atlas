@@ -108,7 +108,7 @@ export async function listInstalled(scope: Scope, cwd?: string): Promise<Install
 
 export async function runCommand(
   command: InstallCommand,
-  opts: { cwd?: string; verbose?: boolean; scope?: Scope; onStderr?: (text: string) => void } = {},
+  opts: { cwd?: string; verbose?: boolean; onStderr?: (text: string) => void } = {},
 ): Promise<CommandOutcome> {
   const run = await runNpx(command.args, opts);
   if (command.kind === 'add') {
@@ -116,12 +116,10 @@ export async function runCommand(
   }
   // `skills remove` has no JSON output: check what is still installed afterwards.
   let still = new Set<string>();
-  if (opts.scope) {
-    try {
-      still = new Set((await listInstalled(opts.scope, opts.cwd)).map((s) => s.name.toLowerCase()));
-    } catch {
-      // Could not verify: trust the exit code below.
-    }
+  try {
+    still = new Set((await listInstalled(command.scope, opts.cwd)).map((s) => s.name.toLowerCase()));
+  } catch {
+    // Could not verify: trust the exit code below.
   }
   const results: SkillResult[] = command.skills.map((name) =>
     run.exitCode === 0 && !still.has(name.toLowerCase())
@@ -140,7 +138,6 @@ export async function runAll(
   opts: {
     cwd?: string;
     verbose?: boolean;
-    scope?: Scope;
     onStart?: (c: InstallCommand, i: number) => void;
     /** Live stderr of the running command, e.g. to follow its progress. */
     onOutput?: (text: string, i: number) => void;

@@ -1,4 +1,4 @@
-import type { InstallOptions, Scope } from '../types.js';
+import { SCOPES, type InstallOptions, type Removal, type Scope } from '../types.js';
 
 export interface InstallCommand {
   kind: 'add' | 'remove';
@@ -7,6 +7,8 @@ export interface InstallCommand {
   skills: string[];
   /** Arguments passed to `npx`. */
   args: string[];
+  /** Scope the command works on, used to check removals afterwards. */
+  scope: Scope;
 }
 
 /** Splits `owner/repo@skill` into its source and skill name. */
@@ -42,7 +44,7 @@ export function planInstall(ids: string[], opts: InstallOptions): InstallCommand
     if (opts.scope === 'global') args.push('-g');
     if (opts.method === 'copy') args.push('--copy');
     args.push('-y', '--json');
-    return { kind: 'add' as const, source, skills, args };
+    return { kind: 'add' as const, source, skills, args, scope: opts.scope };
   });
 }
 
@@ -56,7 +58,17 @@ export function planRemove(names: string[], opts: { scope: Scope; skillsVersion:
   if (skills.length === 0) return [];
   const args = ['-y', `skills@${opts.skillsVersion}`, 'remove', '-s', ...skills, '-y'];
   if (opts.scope === 'global') args.push('-g');
-  return [{ kind: 'remove', source: '', skills, args }];
+  return [{ kind: 'remove', source: '', skills, args, scope: opts.scope }];
+}
+
+/** One `npx skills remove` call per scope holding skills to uninstall (project first). */
+export function planRemovals(removals: Removal[], skillsVersion: string): InstallCommand[] {
+  return SCOPES.flatMap((scope) =>
+    planRemove(
+      removals.filter((r) => r.scopes.includes(scope)).map((r) => r.name),
+      { scope, skillsVersion },
+    ),
+  );
 }
 
 /** Shell-like rendering of a command, for `--dry-run` and confirmations. */

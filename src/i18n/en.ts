@@ -27,7 +27,7 @@ export const en = {
   },
 
   scope: {
-    title: 'Where should skills be read and installed?',
+    title: 'Where should the new skills be installed?',
     project: 'Project',
     projectHint: (cwd: string) => `this directory — ${cwd}`,
     global: 'Global',
@@ -52,6 +52,8 @@ export const en = {
     installs: 'installs',
     stars: 'stars',
     rank: 'skills.sh rank',
+    where: { project: 'project', global: 'global' },
+    installedIn: (w: string) => `installed: ${w}`,
     sortedBy: (o: string) => `sorted by ${o}`,
     sort: { installs: 'installs', rank: 'skills.sh rank', name: 'name' },
     official: 'official',

@@ -7,9 +7,9 @@ import { loadCatalog } from './catalog/load.js';
 import { groupByTheme, popularityLabel, querySkills, resolveTheme, SORT_ORDERS, type QueryOptions, type SortOrder } from './catalog/query.js';
 import { readConfig, writeConfig } from './config.js';
 import { formatNumber, getLang, langFlag, LANGUAGES, normalizeLang, setLang, t, themeLabel, type Lang } from './i18n/index.js';
-import { formatCommand, parseSkillId, planInstall, planRemove, type InstallCommand } from './install/plan.js';
+import { formatCommand, parseSkillId, planInstall, planRemovals, type InstallCommand } from './install/plan.js';
 import { isSuccess, listInstalled, runAll, type CommandOutcome } from './install/run.js';
-import type { Catalog, InstallMethod, InstallOptions, Scope } from './types.js';
+import type { Catalog, InstallMethod, InstallOptions, Removal, Scope } from './types.js';
 import { App, type WizardResult } from './ui/App.js';
 import { Progress } from './ui/Progress.js';
 import { logo } from './ui/logo.js';
@@ -104,19 +104,20 @@ function presetFromFlags(flags: InstallFlags): Partial<Pick<InstallOptions, 'age
   return { agents: flags.agent, scope, method };
 }
 
-/** Uninstalls `remove` (names), then installs `ids`, reporting each skill. */
-async function apply(ids: string[], remove: string[], options: InstallOptions, flags: InstallFlags): Promise<void> {
+/** Uninstalls `remove` (from each of their scopes), then installs `ids`, reporting each skill. */
+async function apply(ids: string[], remove: Removal[], options: InstallOptions, flags: InstallFlags): Promise<void> {
   const r = t().run;
-  const commands = [...planRemove(remove, options), ...(ids.length ? planInstall(ids, options) : [])];
+  const commands = [...planRemovals(remove, options.skillsVersion), ...(ids.length ? planInstall(ids, options) : [])];
   if (flags.dryRun) {
     for (const c of commands) console.log(formatCommand(c));
     return;
   }
   const config = readConfig();
-  writeConfig({ ...config, agents: options.agents, scope: options.scope, method: options.method });
+  // Removals only: nothing was asked, so there is nothing to remember.
+  if (ids.length) writeConfig({ ...config, agents: options.agents, scope: options.scope, method: options.method });
   const started = Date.now();
   const outcomes =
-    process.stdout.isTTY && !flags.verbose ? await runWithProgress(commands, options.scope) : await runPlain(commands, options, flags);
+    process.stdout.isTTY && !flags.verbose ? await runWithProgress(commands) : await runPlain(commands, options, flags);
   const results = outcomes.flatMap((o) => o.results);
   const installed = results.filter((x) => x.status === 'installed').length;
   const removed = results.filter((x) => x.status === 'removed').length;
@@ -132,9 +133,9 @@ async function apply(ids: string[], remove: string[], options: InstallOptions, f
 }
 
 /** Stacked progress bars (Ink), for an interactive terminal. */
-async function runWithProgress(commands: InstallCommand[], scope: Scope): Promise<CommandOutcome[]> {
+async function runWithProgress(commands: InstallCommand[]): Promise<CommandOutcome[]> {
   let outcomes: CommandOutcome[] = [];
-  const app = render(<Progress commands={commands} scope={scope} onDone={(o) => (outcomes = o)} />);
+  const app = render(<Progress commands={commands} onDone={(o) => (outcomes = o)} />);
   await app.waitUntilExit();
   releaseStdin();
   return outcomes;
@@ -146,7 +147,6 @@ async function runPlain(commands: InstallCommand[], options: InstallOptions, fla
   console.log();
   return runAll(commands, {
     verbose: flags.verbose,
-    scope: options.scope,
     onStart: (c, i) => {
       const step = paint('dim', `[${i + 1}/${commands.length}]`);
       const what = c.kind === 'remove' ? paint(['bold', 'red'], r.removing) : `${paint('bold', r.installing)} ${paint('dim', c.source)}`;
@@ -239,8 +239,8 @@ filterOptions(installOptions(program.command('browse', { isDefault: true })))
     if (!skills.length) fail(m.errors.noMatch);
     const preset = presetFromFlags(opts);
     const { defaults, detected } = resolveDefaults();
-    const loadInstalled = async (scope: Scope) =>
-      mergeInstalled(catalog.skills, skills, await listInstalled(scope));
+    const loadInstalled = async (scopes: Scope[]) =>
+      mergeInstalled(catalog.skills, skills, (await Promise.all(scopes.map((sc) => listInstalled(sc)))).flat());
     let result: WizardResult | null = null;
     const app = render(
       <App

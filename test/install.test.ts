@@ -3,7 +3,7 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { detectAgents, expandHome, unknownAgents } from '../src/agents.js';
-import { formatCommand, parseSkillId, planInstall, planRemove } from '../src/install/plan.js';
+import { formatCommand, parseSkillId, planInstall, planRemove, planRemovals } from '../src/install/plan.js';
 import { isSuccess, parseResults, phaseOf } from '../src/install/run.js';
 import { barFraction } from '../src/ui/Progress.js';
 import { frontmatterName, lockPath, readLockSources, scanInstalled } from '../src/install/scan.js';
@@ -71,7 +71,7 @@ describe('results', () => {
   });
 
   it('treats skipped or failed entries as failure', () => {
-    const command = { kind: 'add' as const, source: 'o/r', skills: ['x'], args: [] };
+    const command = { kind: 'add' as const, source: 'o/r', skills: ['x'], args: [], scope: 'project' as const };
     expect(isSuccess({ command, exitCode: 0, stderr: '', results: [{ status: 'installed' }] })).toBe(true);
     expect(isSuccess({ command, exitCode: 0, stderr: '', results: [{ status: 'skipped' }] })).toBe(false);
     expect(isSuccess({ command, exitCode: 1, stderr: '', results: [] })).toBe(false);
@@ -87,8 +87,23 @@ describe('removal', () => {
     expect(cmd!.args).not.toContain('-a');
   });
 
+  it('removes each skill from every scope it is installed in, project first', () => {
+    const cmds = planRemovals(
+      [
+        { name: 'pdf', scopes: ['project', 'global'] },
+        { name: 'docx', scopes: ['global'] },
+      ],
+      '1.7.0',
+    );
+    expect(cmds.map((c) => [c.scope, c.skills])).toEqual([
+      ['project', ['pdf']],
+      ['global', ['pdf', 'docx']],
+    ]);
+    expect(cmds[1]!.args.at(-1)).toBe('-g');
+  });
+
   it('judges a removal by its verified results', () => {
-    const command = { kind: 'remove' as const, source: '', skills: ['x'], args: [] };
+    const command = { kind: 'remove' as const, source: '', skills: ['x'], args: [], scope: 'project' as const };
     expect(isSuccess({ command, exitCode: 0, stderr: '', results: [{ name: 'x', status: 'removed' }] })).toBe(true);
     expect(isSuccess({ command, exitCode: 0, stderr: '', results: [{ name: 'x', status: 'failed' }] })).toBe(false);
   });

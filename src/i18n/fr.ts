@@ -30,7 +30,7 @@ export const fr: Messages = {
   },
 
   scope: {
-    title: 'Où lire et installer les skills ?',
+    title: 'Où installer les nouveaux skills ?',
     project: 'Projet',
     projectHint: (cwd) => `ce dossier — ${cwd}`,
     global: 'Global',
@@ -55,6 +55,8 @@ export const fr: Messages = {
     installs: 'installations',
     stars: 'étoiles',
     rank: 'rang skills.sh',
+    where: { project: 'projet', global: 'global' },
+    installedIn: (w) => `installé : ${w}`,
     sortedBy: (o: string) => `tri : ${o}`,
     sort: { installs: 'installations', rank: 'classement skills.sh', name: 'nom' },
     official: 'officiel',

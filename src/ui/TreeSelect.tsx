@@ -2,7 +2,8 @@ import { Box, Text, useInput } from 'ink';
 import { useMemo, useState } from 'react';
 import { groupByTheme, haystack, popularityLabel, SORT_ORDERS, sortSkills, type SortOrder } from '../catalog/query.js';
 import { formatNumber, t, themeLabel } from '../i18n/index.js';
-import type { Skill, Theme } from '../types.js';
+import type { InstalledEntry } from '../catalog/installed.js';
+import type { Scope, Skill, Theme } from '../types.js';
 import { ACCENT, BOX, Hints, Panel, useTerminalSize } from './Layout.js';
 
 type Row =
@@ -13,10 +14,10 @@ export interface TreeSelectProps {
   themes: Theme[];
   skills: Skill[];
   initialSelected?: string[];
-  /** Installed skill ids: ticked at start, unticking one means uninstalling it. */
-  installed?: Map<string, string>;
-  /** Shown in the status line. */
-  scope?: string;
+  /** Installed skill ids: ticked at start, unticking one means uninstalling it (from every scope). */
+  installed?: Map<string, InstalledEntry>;
+  /** Scopes read for installed skills, shown in the status line. */
+  scopes?: Scope[];
   /** Starting order, changed with `s`. */
   initialSort?: SortOrder;
   /** Start with only official skills, toggled with `o`. */
@@ -44,12 +45,17 @@ function popularityLong(s: Skill): string {
   return s.rank !== undefined ? `${m.rank} #${formatNumber(s.rank)}` : '';
 }
 
+/** "project", "global" or "project + global". */
+export function scopesLabel(scopes: Scope[]): string {
+  return scopes.map((sc) => t().tree.where[sc]).join(' + ');
+}
+
 export function TreeSelect({
   themes,
   skills,
   initialSelected = [],
   installed = new Map(),
-  scope,
+  scopes,
   initialSort = 'installs',
   initialOfficial = false,
   onSubmit,
@@ -95,7 +101,7 @@ export function TreeSelect({
 
   // Column widths of skill rows: cursor+indent+box (8), name, source, status, popularity.
   const popW = 8;
-  const statusW = Math.max(m.tree.installed.length, m.tree.toRemove.length) + 3;
+  const statusW = Math.max(scopesLabel(['project', 'global']).length, m.tree.toRemove.length) + 3;
   const nameW = Math.max(18, Math.min(40, Math.floor(columns * 0.3)));
   // The screen has a 1-column padding on each side.
   const sourceW = Math.max(0, columns - 2 - 8 - nameW - 2 - statusW - 2 - popW - 1);
@@ -188,7 +194,7 @@ export function TreeSelect({
               <Text color="green">+{toInstall}</Text> <Text color="red">−{toRemove}</Text>
             </Text>
           )}
-          {scope && <Text dimColor>{`   ${m.tree.scope(scope === 'global' ? m.scope.global : m.scope.project)}`}</Text>}
+          {scopes && <Text dimColor>{`   ${m.tree.scope(scopesLabel(scopes))}`}</Text>}
           <Text dimColor>{`   ${m.tree.sortedBy(m.tree.sort[sort])}`}</Text>
           {officialOnly && <Text color="blue">{`   ${OFFICIAL_MARK} ${m.tree.officialOnly}`}</Text>}
         </Text>
@@ -228,8 +234,9 @@ export function TreeSelect({
           }
           const s = r.skill;
           const isOn = selected.has(s.id);
-          const isInstalled = installed.has(s.id);
-          const status = isInstalled ? (isOn ? `● ${m.tree.installed}` : `✗ ${m.tree.toRemove}`) : '';
+          const entry = installed.get(s.id);
+          const isInstalled = entry !== undefined;
+          const status = entry ? (isOn ? `● ${scopesLabel(entry.scopes)}` : `✗ ${m.tree.toRemove}`) : '';
           return (
             <Text key={`s:${r.themeId}:${s.id}`} wrap="truncate-end">
               {pointer}
@@ -255,6 +262,9 @@ export function TreeSelect({
                 <Text bold>{row.skill.name}</Text>
                 <Text dimColor>{`  ${row.skill.source}`}</Text>
                 {row.skill.official && <Text color="blue">{`  ${OFFICIAL_MARK} ${m.tree.official}`}</Text>}
+                {installed.has(row.skill.id) && (
+                  <Text color="cyan">{`  ● ${m.tree.installedIn(scopesLabel(installed.get(row.skill.id)!.scopes))}`}</Text>
+                )}
               </Text>
               <Text dimColor>{popularityLong(row.skill)}</Text>
             </Box>

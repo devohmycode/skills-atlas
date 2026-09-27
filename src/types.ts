@@ -57,6 +57,13 @@ export interface Catalog {
 }
 
 export type Scope = 'project' | 'global';
+export const SCOPES: Scope[] = ['project', 'global'];
+
+/** An installed skill to uninstall, from every scope it is installed in. */
+export interface Removal {
+  name: string;
+  scopes: Scope[];
+}
 export type InstallMethod = 'symlink' | 'copy';
 
 export interface InstallOptions {

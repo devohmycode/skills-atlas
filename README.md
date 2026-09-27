@@ -3,9 +3,9 @@
 Browse **every public Agent Skill** (`SKILL.md` format) grouped by theme in a collapsible tree, tick several and install them in one go through [`npx skills add`](https://github.com/vercel-labs/skills), without its interactive prompts. Skills already installed come pre-ticked: untick one to uninstall it.
 
 ```
- SKILLS ATLAS  ·  ✓ Scope  ›  ● Select  ›  ○ Agents  ›  ○ Method  ›  ○ Confirm
+ SKILLS ATLAS  ·  ● Select  ›  ○ Scope  ›  ○ Agents  ›  ○ Method  ›  ○ Confirm
 
- 71,571 skills   ◉ 3 selected   +2 −0   scope: Project                          4 / 3,691
+ 71,571 skills   ◉ 3 selected   +2 −0   scope: project + global                 4 / 3,691
  / search:
 
    ▸ ◉ Already installed                                              1 ✓         1
@@ -27,9 +27,9 @@ Node ≥ 20. The catalog ships inside the package: startup is instant and works 
 ## Usage
 
 ```bash
-skills-atlas                                  # interactive: scope → tree → options → confirm
+skills-atlas                                  # interactive: tree → scope → options → confirm
 skills-atlas browse -t security -q audit      # tree pre-filtered by theme and text
-skills-atlas browse -a claude-code cursor -g  # options given as flags are not asked
+skills-atlas browse -a claude-code cursor -g  # options given as flags are not asked; -g/-p also limits the tree to that scope
 skills-atlas themes                           # themes and their skill counts
 skills-atlas list -t databases -n 10          # non-interactive listing (--json available)
 skills-atlas agents                           # ids accepted by --agent (★ = detected here)
@@ -53,13 +53,13 @@ Translations live in `src/i18n/`. Adding a language takes one file implementing 
 
 ### Installed skills
 
-`skills-atlas` first asks for the scope (`-g`/`-p` to set it), then reads what is installed there:
+`skills-atlas` reads what is installed in **both scopes**, the current project and your user profile, and opens the tree. With `-p` or `-g` it reads only that scope.
 
 - **Detection** reads what the skills CLI writes on disk: the canonical `.agents/skills` directory, every agent's skills directory, and the lock file for sources. It gives the same result as `npx skills list --json` in under a second instead of ~30 s.
-- **Pre-ticked**: installed skills are ticked and marked `● installed`, under their theme and in an **Already installed** group at the top. That group also holds skills the catalog does not know, such as home-made ones.
-- **Uninstall**: unticking an installed skill marks it `✗ will be uninstalled`. On confirmation it is removed from every agent of that scope with `npx skills remove -s … -y [-g]`, then checked on disk.
-- **Install**: ticking a skill that is not installed installs it.
-- **Questions**: the status line shows the balance `+N −M`. Agents and method are only asked when there is something to install.
+- **Pre-ticked**: installed skills are ticked and marked with their scope, `● project`, `● global` or `● project + global`, under their theme and in an **Already installed** group at the top. That group also holds skills the catalog does not know, such as home-made ones.
+- **Uninstall**: unticking an installed skill marks it `✗ will be uninstalled`. On confirmation it is removed from every agent of every scope it was found in, with one `npx skills remove -s … -y [-g]` per scope, then checked on disk.
+- **Install**: ticking a skill that is not installed installs it. The scope is asked after the tree, pre-filled with your last choice, unless `-p`/`-g` sets it.
+- **Questions**: the status line shows the balance `+N −M`. Scope, agents and method are only asked when there is something to install.
 
 ### Keys (tree)
 

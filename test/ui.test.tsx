@@ -106,10 +106,11 @@ describe('App wizard', () => {
     const { lastFrame, stdin } = render(
       <App themes={themes} skills={skills} preset={{ agents: ['claude-code'] }} defaults={defaults} skillsVersion="1.7.0" onDone={(r) => (result = r)} />,
     );
-    // The scope comes first: installed skills depend on it.
-    expect(lastFrame()).toContain('Where should skills be read');
-    await press(stdin, KEY.down, KEY.enter);
+    // The tree comes first; the scope is asked only because there is something to install.
+    await tick();
     await press(stdin, ' ', KEY.enter);
+    expect(lastFrame()).toContain('Where should the new skills be installed?');
+    await press(stdin, KEY.down, KEY.enter);
     // A single agent means a single directory: no method question.
     expect(lastFrame()).toContain('npx -y skills@1.7.0 add a/b -s react-hooks tailwind -a claude-code -g -y --json');
     await press(stdin, KEY.enter);
@@ -158,10 +159,15 @@ describe('App wizard', () => {
 
 describe('installed skills in the wizard', () => {
   const defaults = { agents: ['claude-code'], scope: 'project' as const, method: 'symlink' as const };
-  const loadInstalled = async () =>
-    mergeInstalled(skills, skills, [{ name: 'pentest', source: 'c/d', scope: 'project', agents: ['Claude Code'] }]);
-  const app = (onDone: (r: WizardResult | null) => void) => (
-    <App themes={themes} skills={skills} preset={{ scope: 'project' }} defaults={defaults} skillsVersion="1.7.0" loadInstalled={loadInstalled} onDone={onDone} />
+  const loadInstalled = vi.fn(async (scopes: ('project' | 'global')[]) =>
+    mergeInstalled(
+      skills,
+      skills,
+      scopes.map((scope) => ({ name: 'pentest', source: 'c/d', scope, agents: ['Claude Code'] })),
+    ),
+  );
+  const app = (onDone: (r: WizardResult | null) => void, preset: { scope?: 'project' | 'global' } = {}) => (
+    <App themes={themes} skills={skills} preset={preset} defaults={defaults} skillsVersion="1.7.0" loadInstalled={loadInstalled} onDone={onDone} />
   );
 
   it('pre-ticks installed skills and turns unticking into a removal', async () => {
@@ -169,17 +175,32 @@ describe('installed skills in the wizard', () => {
     const { lastFrame, stdin } = render(app((r) => (result = r)));
     await tick();
     await tick();
+    // Both scopes are read when no scope is given.
+    expect(loadInstalled).toHaveBeenLastCalledWith(['project', 'global']);
     expect(lastFrame()).toMatch(/◉ Already installed\s+1 ✓\s+1/);
-    // Open "Déjà installés", untick pentest.
-    await press(stdin, KEY.right, KEY.down, ' ');
+    expect(lastFrame()).toContain('scope: project + global');
+    await press(stdin, KEY.right, KEY.down);
+    expect(lastFrame()).toContain('● project + global');
+    // Untick pentest: it goes from both scopes.
+    await press(stdin, ' ');
     expect(lastFrame()).toContain('will be uninstalled');
     expect(lastFrame()).toContain('−1');
     await press(stdin, KEY.enter);
-    // Only a removal: no agent or method question.
+    // Only a removal: no scope, agent or method question.
     expect(lastFrame()).toContain('Uninstall 1 skill (from every agent)');
+    expect(lastFrame()).toContain('pentest (project + global)');
     expect(lastFrame()).toContain('npx -y skills@1.7.0 remove -s pentest -y');
+    expect(lastFrame()).toContain('npx -y skills@1.7.0 remove -s pentest -y -g');
     await press(stdin, KEY.enter);
-    expect(result).toMatchObject({ ids: [], remove: ['pentest'] });
+    expect(result).toMatchObject({ ids: [], remove: [{ name: 'pentest', scopes: ['project', 'global'] }] });
+  });
+
+  it('reads only the scope given as a flag', async () => {
+    const { lastFrame } = render(app(() => {}, { scope: 'global' }));
+    await tick();
+    await tick();
+    expect(loadInstalled).toHaveBeenLastCalledWith(['global']);
+    expect(lastFrame()).toContain('scope: global');
   });
 
   it('does not validate when nothing differs', async () => {
@@ -201,11 +222,13 @@ describe('French interface', () => {
       const { lastFrame, stdin } = render(
         <App themes={themes} skills={skills} preset={{}} defaults={{ agents: ['claude-code'], scope: 'project', method: 'symlink' }} skillsVersion="1.7.0" onDone={() => {}} />,
       );
-      expect(lastFrame()).toContain('Où lire et installer les skills ?');
-      expect(lastFrame()).toContain('Portée');
-      await press(stdin, KEY.enter);
+      await tick();
+      expect(lastFrame()).toContain('Sélection');
       expect(lastFrame()).toContain('Sécurité');
       expect(lastFrame()).toContain('0 coché');
+      await press(stdin, ' ', KEY.enter);
+      expect(lastFrame()).toContain('Où installer les nouveaux skills ?');
+      expect(lastFrame()).toContain('Portée');
     } finally {
       setLang('en');
     }

@@ -6,7 +6,7 @@ import { logo } from './logo.js';
 export const ACCENT = 'cyan';
 
 export type StepId = 'scope' | 'select' | 'agents' | 'method' | 'confirm';
-export const STEPS: StepId[] = ['scope', 'select', 'agents', 'method', 'confirm'];
+export const STEPS: StepId[] = ['select', 'scope', 'agents', 'method', 'confirm'];
 
 export function useTerminalSize(): { columns: number; rows: number } {
   const { stdout } = useStdout();

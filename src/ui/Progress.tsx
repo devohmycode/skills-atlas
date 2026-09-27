@@ -3,7 +3,6 @@ import { useEffect, useRef, useState } from 'react';
 import { t } from '../i18n/index.js';
 import type { InstallCommand } from '../install/plan.js';
 import { isSuccess, phaseOf, runAll, type CommandOutcome, type Phase } from '../install/run.js';
-import type { Scope } from '../types.js';
 import { ACCENT, useTerminalSize } from './Layout.js';
 
 const SPINNER = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏'];
@@ -59,13 +58,17 @@ function seconds(ms: number): string {
   return ms < 60_000 ? `${(ms / 1000).toFixed(1)}s` : `${Math.floor(ms / 60_000)}m${String(Math.round((ms % 60_000) / 1000)).padStart(2, '0')}s`;
 }
 
+/** "uninstall · global": removals run once per scope. */
+function removeLabel(c: InstallCommand): string {
+  return `${t().progress.uninstallTask} · ${t().tree.where[c.scope]}`;
+}
+
 function fit(text: string, width: number): string {
   return text.length <= width ? text.padEnd(width) : `${text.slice(0, Math.max(0, width - 1))}…`;
 }
 
 export interface ProgressProps {
   commands: InstallCommand[];
-  scope: Scope;
   verbose?: boolean;
   onDone: (outcomes: CommandOutcome[]) => void;
 }
@@ -74,7 +77,7 @@ export interface ProgressProps {
  * Stacked progress bars, one per command (uninstall first, then one per
  * repository), an overall bar, then a uv-like `+ / - / ×` summary.
  */
-export function Progress({ commands, scope, verbose, onDone }: ProgressProps) {
+export function Progress({ commands, verbose, onDone }: ProgressProps) {
   const m = t();
   const p = m.progress;
   const { exit } = useApp();
@@ -89,7 +92,6 @@ export function Progress({ commands, scope, verbose, onDone }: ProgressProps) {
     const update = (i: number, change: (t: Task) => Task) =>
       setTasks((prev) => prev.map((task, j) => (j === i ? change(task) : task)));
     runAll(commands, {
-      scope,
       verbose,
       onStart: (c, i) => update(i, (task) => ({ ...task, phase: c.kind === 'remove' ? 'installing' : 'fetching', startedAt: Date.now() })),
       onOutput: (text, i) => update(i, (task) => ({ ...task, phase: task.phase === 'partial' ? task.phase : phaseOf(text, task.phase) })),
@@ -129,7 +131,7 @@ export function Progress({ commands, scope, verbose, onDone }: ProgressProps) {
     partial: p.partial,
   };
   const phaseW = Math.max(...Object.values(phaseText).map((x) => x.length));
-  const labelW = Math.min(34, Math.max(12, ...commands.map((c) => (c.kind === 'remove' ? p.uninstallTask : c.source).length)));
+  const labelW = Math.min(34, Math.max(12, ...commands.map((c) => (c.kind === 'remove' ? removeLabel(c) : c.source).length)));
   // Row: icon (2) label (2) skills (2) bar (2) phase time (7), inside a 1-column padding on each side.
   const skillsW = Math.max(8, columns - 2 - 2 - labelW - 2 - 2 - BAR_WIDTH - 2 - phaseW - 7);
   const isOver = (x: Task) => x.phase === 'done' || x.phase === 'failed' || x.phase === 'partial';
@@ -151,7 +153,7 @@ export function Progress({ commands, scope, verbose, onDone }: ProgressProps) {
           const icon =
             task.phase === 'done' ? <Text color="green">✓</Text> : task.phase === 'partial' ? <Text color="yellow">✓</Text> : task.phase === 'failed' ? <Text color="red">✗</Text> : running ? <Text color={ACCENT}>{spinner}</Text> : <Text dimColor>·</Text>;
           const color = task.phase === 'failed' ? 'red' : task.phase === 'partial' ? 'yellow' : task.phase === 'done' ? 'green' : ACCENT;
-          const label = c.kind === 'remove' ? p.uninstallTask : c.source;
+          const label = c.kind === 'remove' ? removeLabel(c) : c.source;
           return (
             <Text key={i} wrap="truncate-end">
               {icon}{' '}
