@@ -119,6 +119,8 @@ export const fr: Messages = {
     description: 'Parcourir tous les Agent Skills publics par thème, en choisir plusieurs et les installer avec `npx skills add`.',
     lang: "langue de l'interface (en, fr), mémorisée pour les exécutions suivantes",
     catalog: 'catalogue alternatif (.json ou .json.gz, chemin ou URL)',
+    offline: 'ne pas télécharger le dernier catalogue ; utiliser celui en cache ou celui du paquet',
+    updatingCatalog: 'Téléchargement du dernier catalogue…',
     theme: 'limiter à ces thèmes (id ou libellé)',
     search: 'filtrer par texte (id, description)',
     minInstalls: "nombre minimum d'installations",

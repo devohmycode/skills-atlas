@@ -116,6 +116,8 @@ export const en = {
     description: 'Browse every public Agent Skill by theme, pick several and install them with `npx skills add`.',
     lang: 'interface language (en, fr), remembered for later runs',
     catalog: 'alternative catalog (.json or .json.gz, path or URL)',
+    offline: 'do not download the latest catalog; use the cached or bundled one',
+    updatingCatalog: 'Fetching the latest catalog…',
     theme: 'only these themes (id or label)',
     search: 'filter by text (id, description)',
     minInstalls: 'minimum installs',

@@ -4,6 +4,8 @@ import { styleText } from 'node:util';
 import { AGENTS, detectAgents, unknownAgents } from './agents.js';
 import { mergeInstalled } from './catalog/installed.js';
 import { loadCatalog } from './catalog/load.js';
+import { loadLatestCatalog } from './catalog/remote.js';
+import pkg from '../package.json' with { type: 'json' };
 import { groupByTheme, popularityLabel, querySkills, resolveTheme, SORT_ORDERS, type QueryOptions, type SortOrder } from './catalog/query.js';
 import { readConfig, writeConfig } from './config.js';
 import { formatNumber, getLang, langFlag, LANGUAGES, normalizeLang, setLang, t, themeLabel, type Lang } from './i18n/index.js';
@@ -24,6 +26,7 @@ const paint = (style: Style, text: string) => (process.stdout.isTTY ? styleText(
 
 interface CommonOptions {
   catalog?: string;
+  offline?: boolean;
 }
 interface FilterOptions extends CommonOptions {
   theme?: string[];
@@ -77,7 +80,12 @@ function resolveLang(argv: string[]): Lang {
 
 async function openCatalog(opts: CommonOptions): Promise<Catalog> {
   try {
-    return await loadCatalog(opts.catalog);
+    if (opts.catalog) return await loadCatalog(opts.catalog);
+    // Latest snapshot from GitHub (refreshed daily), else the one bundled in the package.
+    return await loadLatestCatalog({
+      offline: opts.offline || Boolean(process.env.SKILLS_ATLAS_OFFLINE),
+      onDownload: () => process.stderr.isTTY && console.error(paint('dim', t().cli.updatingCatalog)),
+    });
   } catch (err) {
     fail(err instanceof Error ? err.message : String(err));
   }
@@ -204,11 +212,12 @@ const c = m.cli;
 const program = new Command()
   .name('skills-atlas')
   .description(c.description)
-  .version('0.1.0')
+  .version(pkg.version)
   .addOption(new Option('-l, --lang <code>', c.lang))
   .addHelpText('beforeAll', () => (process.stdout.isTTY ? `\n${logo(process.stdout.columns)}\n` : ''));
 
 const catalogOption = () => new Option('--catalog <path|url>', c.catalog);
+const offlineOption = () => new Option('--offline', c.offline);
 const filterOptions = (cmd: Command) =>
   cmd
     .option('-t, --theme <theme...>', c.theme)
@@ -217,7 +226,8 @@ const filterOptions = (cmd: Command) =>
     .option('--all', c.all)
     .option('--official', c.official)
     .addOption(new Option('-s, --sort <order>', c.sort).choices(SORT_ORDERS).default('installs'))
-    .addOption(catalogOption());
+    .addOption(catalogOption())
+    .addOption(offlineOption());
 const installOptions = (cmd: Command) =>
   cmd
     .option('-a, --agent <agents...>', c.agent)
@@ -293,6 +303,7 @@ program
   .option('--all', c.themesAll)
   .option('--official', c.official)
   .addOption(catalogOption())
+  .addOption(offlineOption())
   .action(async (opts: FilterOptions) => {
     const catalog = await openCatalog(opts);
     const skills = querySkills(catalog, { all: opts.all, official: opts.official });

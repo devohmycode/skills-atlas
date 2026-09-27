@@ -16,7 +16,7 @@ export function defaultCatalogPath(): string {
   return join(process.cwd(), 'data', 'catalog.json.gz');
 }
 
-function decode(buf: Buffer): Catalog {
+export function decodeCatalog(buf: Buffer): Catalog {
   // gzip magic number: 1f 8b
   const text = buf[0] === 0x1f && buf[1] === 0x8b ? gunzipSync(buf).toString('utf8') : buf.toString('utf8');
   const catalog = JSON.parse(text) as Catalog;
@@ -29,12 +29,12 @@ export async function loadCatalog(location = defaultCatalogPath()): Promise<Cata
   if (/^https?:\/\//.test(location)) {
     const res = await fetch(location, { signal: AbortSignal.timeout(60_000) });
     if (!res.ok) throw new Error(`HTTP ${res.status} for ${location}`);
-    return decode(Buffer.from(await res.arrayBuffer()));
+    return decodeCatalog(Buffer.from(await res.arrayBuffer()));
   }
   if (!existsSync(location)) {
     throw new Error(`catalog not found at ${location} — run \`npm run crawl\` or pass --catalog <path|url>`);
   }
-  return decode(await readFile(location));
+  return decodeCatalog(await readFile(location));
 }
 
 export async function saveCatalog(catalog: Catalog, path: string): Promise<number> {

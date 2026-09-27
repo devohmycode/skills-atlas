@@ -22,7 +22,7 @@ Browse **every public Agent Skill** (`SKILL.md` format) grouped by theme in a co
 npx skills-atlas            # or: npm i -g skills-atlas
 ```
 
-Node ≥ 20. The catalog ships inside the package: startup is instant and works offline.
+Node ≥ 20. A catalog snapshot ships inside the package, so it works offline; online, the CLI fetches the latest daily snapshot (see [The catalog](#the-catalog)).
 
 ## Usage
 
@@ -86,6 +86,7 @@ Translations live in `src/i18n/`. Adding a language takes one file implementing 
 | `--dry-run` | print the `npx skills` commands without running them |
 | `--skills-version <v>` | skills CLI version (default: 1.7.0, pinned) |
 | `--catalog <path\|url>` | alternative catalog |
+| `--offline` | do not download the latest catalog (also `SKILLS_ATLAS_OFFLINE=1`) |
 | `--all`, `--min-installs <n>` | include skills with no installs or stars / minimum installs |
 | `-s, --sort <order>` | `installs` (default), `rank` (skills.sh leaderboard) or `name`; also for `list` |
 | `--official` | only official skills; also for `list` and `themes` |
@@ -111,7 +112,9 @@ In a terminal, progress is shown uv-style: one line per task (uninstall, then on
 
 ## The catalog
 
-`data/catalog.json.gz` is rebuilt every day by GitHub Actions (`npm run crawl`) from:
+`data/catalog.json.gz` is rebuilt every day by GitHub Actions (`npm run crawl`). The CLI downloads that snapshot from GitHub, keeps it in `~/.cache/skills-atlas/` (or `$XDG_CACHE_HOME/skills-atlas/`) and checks for a new one at most every 12 hours, with an ETag, so an unchanged catalog is not downloaded again. It uses the snapshot bundled in the npm package when that one is newer, when GitHub cannot be reached (it then waits an hour before trying again), or with `--offline`. Changes to the catalog format must stay readable by released versions, which download it too.
+
+The snapshot is built from:
 
 | Source | Access | Provides |
 |---|---|---|
