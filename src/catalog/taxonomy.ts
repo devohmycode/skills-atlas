@@ -47,11 +47,24 @@ export const THEMES: ThemeRule[] = [
   },
   {
     id: 'mobile',
-    label: 'Mobile',
+    label: 'Mobile (iOS, Android)',
     keywords: [
       'mobile', 'ios', 'android', 'swift', 'swiftui', 'uikit', 'react native', 'react-native', 'expo', 'flutter',
       'dart', 'jetpack compose', 'xcode', 'app store', 'play store', 'watchos', 'visionos',
       '移动端', '小程序', 'アプリ',
+    ],
+  },
+  {
+    // Swift, SwiftUI and Xcode stay in Mobile: a macOS skill wins here on its platform words
+    // (macOS, AppKit, menu bar…), which outweigh the shared Swift words.
+    // "desktop" alone is left out: it mostly means Claude Desktop.
+    id: 'desktop',
+    label: 'Desktop apps (macOS, Windows, Linux)',
+    keywords: [
+      'macos', 'mac os', 'appkit', 'menu bar', 'menubar', 'mac app*', 'notariz*', 'dmg',
+      'desktop app*', 'desktop application*', 'electron', 'tauri', 'winui', 'wpf', 'winforms', 'win32',
+      'windows app*', 'gtk', 'qt', 'pyqt', 'avalonia',
+      '桌面应用', 'デスクトップアプリ',
     ],
   },
   {

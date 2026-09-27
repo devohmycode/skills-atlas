@@ -106,6 +106,28 @@ describe('dedupe', () => {
   });
 });
 
+describe('classify desktop apps apart from mobile', () => {
+  const c = (name: string, description: string) => classify({ name, description, labels: [] });
+
+  it('puts macOS apps in desktop even when written in Swift', () => {
+    expect(c('build-macos-apps', 'Build professional native macOS apps in Swift with SwiftUI and AppKit.')).toEqual(['desktop']);
+    expect(c('swift-macos', 'Build macOS applications - AppKit, windows, menus, system integration')[0]).toBe('desktop');
+    expect(c('asc-notarization', 'Archive, export, and notarize macOS apps using xcodebuild and asc.')[0]).toBe('desktop');
+    expect(c('menubar-app', 'Create a menu bar app for the Mac')[0]).toBe('desktop');
+  });
+
+  it('covers Electron, Tauri and Windows desktop stacks', () => {
+    expect(c('electron-builder', 'Package an Electron desktop application')[0]).toBe('desktop');
+    expect(c('tauri-v2', 'Tauri 2 apps with a Rust core')[0]).toBe('desktop');
+    expect(c('winui-app', 'WinUI 3 and WPF guidance')[0]).toBe('desktop');
+  });
+
+  it('keeps iOS apps in mobile and ignores Claude Desktop', () => {
+    expect(c('swiftui-ios', 'SwiftUI views for iPhone and iPad apps on iOS')[0]).toBe('mobile');
+    expect(c('mcp-setup', 'Configure MCP servers in Claude Desktop')).not.toContain('desktop');
+  });
+});
+
 describe('classify', () => {
   it('uses the name, the description and source labels', () => {
     expect(classify({ name: 'react-best-practices', description: 'React and Next.js patterns', labels: [] })[0]).toBe('frontend');
