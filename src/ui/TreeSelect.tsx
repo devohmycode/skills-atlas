@@ -6,6 +6,7 @@ import type { InstalledEntry } from '../catalog/installed.js';
 import type { Scope, Skill, Theme } from '../types.js';
 import { ACCENT, BOX, Hints, Panel, useTerminalSize, type Hint } from './Layout.js';
 import { isMouseInput, useListMouse } from './mouse.js';
+import { fit, padStart, width } from './width.js';
 
 type Row =
   | { kind: 'theme'; theme: Theme; skills: Skill[]; expanded: boolean }
@@ -35,12 +36,6 @@ const WHEEL_STEP = 3;
 const THEME_BOX_COLUMN = 7;
 /** Marks official skills in the list and the details panel. */
 const OFFICIAL_MARK = '◆';
-
-function fit(text: string, width: number): string {
-  if (width <= 0) return '';
-  if (text.length <= width) return text.padEnd(width);
-  return `${text.slice(0, Math.max(0, width - 1))}…`;
-}
 
 /** Long popularity for the details panel: "924,211 installs". */
 function popularityLong(s: Skill): string {
@@ -106,7 +101,7 @@ export function TreeSelect({
 
   // Column widths of skill rows: cursor+indent+box (8), name, source, status, popularity.
   const popW = 8;
-  const statusW = Math.max(scopesLabel(['project', 'global']).length, m.tree.toRemove.length) + 3;
+  const statusW = Math.max(width(scopesLabel(['project', 'global'])), width(m.tree.toRemove)) + 3;
   const nameW = Math.max(18, Math.min(40, Math.floor(columns * 0.3)));
   // The screen has a 1-column padding on each side.
   const sourceW = Math.max(0, columns - 2 - 8 - nameW - 2 - statusW - 2 - popW - 1);
@@ -264,7 +259,7 @@ export function TreeSelect({
                 </Text>
                 <Text>
                   {n > 0 && <Text color="green">{`${formatNumber(n)} ✓   `}</Text>}
-                  <Text dimColor>{formatNumber(r.skills.length).padStart(7)}</Text>
+                  <Text dimColor>{padStart(formatNumber(r.skills.length), 7)}</Text>
                 </Text>
               </Box>
             );
@@ -285,7 +280,7 @@ export function TreeSelect({
               </Text>
               <Text dimColor>{`  ${fit(s.source, sourceW)}`}</Text>
               <Text color={isInstalled && !isOn ? 'red' : 'cyan'}>{`  ${fit(status, statusW)}`}</Text>
-              <Text dimColor>{popularityLabel(s).padStart(popW)}</Text>
+              <Text dimColor>{padStart(popularityLabel(s), popW)}</Text>
             </Text>
           );
         })}

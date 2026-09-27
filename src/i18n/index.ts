@@ -1,11 +1,20 @@
 import type { Theme } from '../types.js';
 import { en, type Messages } from './en.js';
 import { fr } from './fr.js';
+import { ja } from './ja.js';
+import { ko } from './ko.js';
+import { zh } from './zh.js';
 
-/** Available translations. Adding a language = one file implementing `Messages` + one entry here. */
-export const LANGUAGES = { en, fr } satisfies Record<string, Messages>;
+/**
+ * Available translations. Adding a language = one file implementing `Messages`, one entry here
+ * and its locale in LOCALES (the tests check that every theme is translated).
+ */
+export const LANGUAGES = { en, fr, zh, ja, ko } satisfies Record<string, Messages>;
 export type Lang = keyof typeof LANGUAGES;
 export const DEFAULT_LANG: Lang = 'en';
+
+/** Locale used to format numbers (`79,668`, `79 668`…), also sent to the web page. */
+export const LOCALES: Record<Lang, string> = { en: 'en-US', fr: 'fr-FR', zh: 'zh-CN', ja: 'ja-JP', ko: 'ko-KR' };
 
 let current: Lang = DEFAULT_LANG;
 
@@ -17,6 +26,23 @@ export function isLang(value: string | undefined): value is Lang {
 export function normalizeLang(value: string | undefined): Lang | undefined {
   const code = value?.trim().toLowerCase().split(/[-_.]/)[0];
   return isLang(code) ? code : undefined;
+}
+
+/**
+ * Language of the system, when it is one we have: LC_ALL, LC_MESSAGES or LANG (Unix), else the
+ * locale Node gets from the OS (Windows sets no LANG). `C` and `POSIX` mean "no preference".
+ */
+export function systemLang(
+  env: Record<string, string | undefined> = process.env,
+  osLocale: string | undefined = Intl.DateTimeFormat().resolvedOptions().locale,
+): Lang | undefined {
+  for (const name of ['LC_ALL', 'LC_MESSAGES', 'LANG']) {
+    const value = env[name]?.trim();
+    if (!value || value === 'C' || value === 'POSIX' || value.startsWith('C.')) continue;
+    // The first variable set decides, even for a language we do not have.
+    return normalizeLang(value);
+  }
+  return normalizeLang(osLocale);
 }
 
 export function setLang(lang: Lang): void {
@@ -42,9 +68,13 @@ export function themeAliases(theme: Theme): string[] {
   return [theme.id, theme.label, ...Object.values(LANGUAGES).map((m) => m.themes[theme.id]).filter((l): l is string => !!l)];
 }
 
+export function locale(): string {
+  return LOCALES[current];
+}
+
 /** Locale-aware number formatting (`71,571` / `71 571`). */
 export function formatNumber(n: number): string {
-  return n.toLocaleString(current === 'fr' ? 'fr-FR' : 'en-US');
+  return n.toLocaleString(locale());
 }
 
 /** Value of `-l fr`, `-l=fr`, `--lang fr` or `--lang=fr`, ignoring anything after `--`. */

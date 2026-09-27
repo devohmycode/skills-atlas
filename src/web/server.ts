@@ -8,7 +8,7 @@ import { AGENTS, detectAgents, unknownAgents } from '../agents.js';
 import { INSTALLED_THEME, mergeInstalled, type InstalledEntry } from '../catalog/installed.js';
 import { haystack, SORT_ORDERS, sortSkills } from '../catalog/query.js';
 import { readConfig, writeConfig } from '../config.js';
-import { getLang, t, themeLabel } from '../i18n/index.js';
+import { getLang, locale, t, themeLabel } from '../i18n/index.js';
 import { formatCommand, planInstall, planRemovals, type InstallCommand } from '../install/plan.js';
 import { isSuccess, listInstalled, phaseOf, runAll, type CommandOutcome, type InstalledSkill, type Phase } from '../install/run.js';
 import { SCOPES, type InstallOptions, type Removal, type Skill } from '../types.js';
@@ -104,6 +104,7 @@ export async function startServer(opts: ServerOptions): Promise<AtlasServer> {
     const byId = new Map(inst.skills.map((s) => [s.id, s]));
     return {
       lang: getLang(),
+      locale: locale(),
       messages: t().web,
       cwd,
       skillsVersion: opts.skillsVersion,

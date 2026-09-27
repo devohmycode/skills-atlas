@@ -4,6 +4,7 @@ import { t } from '../i18n/index.js';
 import type { InstallCommand } from '../install/plan.js';
 import { isSuccess, phaseOf, runAll, type CommandOutcome, type Phase } from '../install/run.js';
 import { ACCENT, useTerminalSize } from './Layout.js';
+import { fit, width as textWidth } from './width.js';
 
 const SPINNER = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏'];
 const TICK_MS = 80;
@@ -61,10 +62,6 @@ function seconds(ms: number): string {
 /** "uninstall · global": removals run once per scope. */
 function removeLabel(c: InstallCommand): string {
   return `${t().progress.uninstallTask} · ${t().tree.where[c.scope]}`;
-}
-
-function fit(text: string, width: number): string {
-  return text.length <= width ? text.padEnd(width) : `${text.slice(0, Math.max(0, width - 1))}…`;
 }
 
 export interface ProgressProps {
@@ -130,8 +127,8 @@ export function Progress({ commands, verbose, onDone }: ProgressProps) {
     failed: p.failed,
     partial: p.partial,
   };
-  const phaseW = Math.max(...Object.values(phaseText).map((x) => x.length));
-  const labelW = Math.min(34, Math.max(12, ...commands.map((c) => (c.kind === 'remove' ? removeLabel(c) : c.source).length)));
+  const phaseW = Math.max(...Object.values(phaseText).map(textWidth));
+  const labelW = Math.min(34, Math.max(12, ...commands.map((c) => textWidth(c.kind === 'remove' ? removeLabel(c) : c.source))));
   // Row: icon (2) label (2) skills (2) bar (2) phase time (7), inside a 1-column padding on each side.
   const skillsW = Math.max(8, columns - 2 - 2 - labelW - 2 - 2 - BAR_WIDTH - 2 - phaseW - 7);
   const isOver = (x: Task) => x.phase === 'done' || x.phase === 'failed' || x.phase === 'partial';

@@ -672,7 +672,7 @@ dialog::backdrop { background: color-mix(in oklab, var(--paper) 40%, rgba(5,12,2
   apiJson('/api/state').then(function (st) {
     M = st.messages;
     document.documentElement.lang = st.lang;
-    var locale = st.lang === 'fr' ? 'fr-FR' : 'en-US';
+    var locale = st.locale || 'en-US';
     fmt = new Intl.NumberFormat(locale);
     compact = new Intl.NumberFormat(locale, { notation: 'compact', maximumFractionDigits: 1 });
     setState(st);

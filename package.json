@@ -44,6 +44,7 @@
     "ink": "^6.0.0",
     "p-limit": "^7.0.0",
     "react": "^19.0.0",
+    "string-width": "^8.3.0",
     "zod": "^4.0.0"
   },
   "devDependencies": {

@@ -8,7 +8,7 @@ import { loadLatestCatalog } from './catalog/remote.js';
 import pkg from '../package.json' with { type: 'json' };
 import { groupByTheme, popularityLabel, querySkills, resolveTheme, SORT_ORDERS, type QueryOptions, type SortOrder } from './catalog/query.js';
 import { readConfig, writeConfig } from './config.js';
-import { formatNumber, getLang, langFlag, LANGUAGES, normalizeLang, setLang, t, themeLabel, type Lang } from './i18n/index.js';
+import { formatNumber, getLang, langFlag, LANGUAGES, normalizeLang, setLang, systemLang, t, themeLabel, type Lang } from './i18n/index.js';
 import { formatCommand, parseSkillId, planInstall, planRemovals, type InstallCommand } from './install/plan.js';
 import { isSuccess, listInstalled, runAll, type CommandOutcome } from './install/run.js';
 import type { Catalog, InstallMethod, InstallOptions, Removal, Scope } from './types.js';
@@ -16,6 +16,7 @@ import { App, type WizardResult } from './ui/App.js';
 import { Progress } from './ui/Progress.js';
 import { logo } from './ui/logo.js';
 import { enableMouse } from './ui/mouse.js';
+import { padEnd, width } from './ui/width.js';
 import { openBrowser, startServer } from './web/server.js';
 
 /** Version of the `skills` CLI driven by default; its flags are the contract we rely on. */
@@ -63,7 +64,7 @@ function fail(message: string): never {
 /**
  * Interface language, resolved before the commands are built so that their
  * help is translated: `--lang`, then SKILLS_ATLAS_LANG, then the saved
- * choice, then English.
+ * choice, then the system's language when we have it, then English.
  */
 function resolveLang(argv: string[]): Lang {
   const fromFlag = langFlag(argv);
@@ -81,7 +82,7 @@ function resolveLang(argv: string[]): Lang {
     }
     return lang;
   }
-  return normalizeLang(process.env.SKILLS_ATLAS_LANG) ?? normalizeLang(readConfig().lang) ?? 'en';
+  return normalizeLang(process.env.SKILLS_ATLAS_LANG) ?? normalizeLang(readConfig().lang) ?? systemLang() ?? 'en';
 }
 
 
@@ -312,7 +313,7 @@ filterOptions(program.command('list'))
     for (const g of groups) {
       console.log(`\n${paint('bold', themeLabel(g.theme))} ${paint('dim', `(${formatNumber(g.skills.length)})`)}`);
       for (const s of opts.limit ? g.skills.slice(0, opts.limit) : g.skills) {
-        console.log(`  ${s.id.padEnd(60)} ${paint('dim', popularityLabel(s))}`);
+        console.log(`  ${padEnd(s.id, 60)} ${paint('dim', popularityLabel(s))}`);
       }
     }
   });
@@ -357,9 +358,9 @@ program
     const skills = querySkills(catalog, { all: opts.all, official: opts.official });
     console.log(`\n${paint('bold', c.catalogOf(catalog.generatedAt.slice(0, 10), formatNumber(skills.length)))}\n`);
     const groups = groupByTheme(catalog.themes, skills);
-    const labelW = Math.max(...groups.map((g) => themeLabel(g.theme).length));
+    const labelW = Math.max(...groups.map((g) => width(themeLabel(g.theme))));
     for (const g of groups) {
-      console.log(`  ${paint('cyan', g.theme.id.padEnd(14))} ${themeLabel(g.theme).padEnd(labelW)} ${formatNumber(g.skills.length).padStart(7)}`);
+      console.log(`  ${paint('cyan', g.theme.id.padEnd(14))} ${padEnd(themeLabel(g.theme), labelW)} ${formatNumber(g.skills.length).padStart(7)}`);
     }
     console.log();
   });

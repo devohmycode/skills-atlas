@@ -185,7 +185,7 @@ export const fr: Messages = {
 
   cli: {
     description: 'Parcourir tous les Agent Skills publics par thème, en choisir plusieurs et les installer avec `npx skills add`.',
-    lang: "langue de l'interface (en, fr), mémorisée pour les exécutions suivantes",
+    lang: "langue de l'interface (voir `skills-atlas lang`), mémorisée pour les exécutions suivantes",
     catalog: 'catalogue alternatif (.json ou .json.gz, chemin ou URL)',
     offline: 'ne pas télécharger le dernier catalogue ; utiliser celui en cache ou celui du paquet',
     refresh: 'vérifier tout de suite sur GitHub si un catalogue plus récent existe, au lieu d’attendre jusqu’à 12 h',

@@ -183,7 +183,7 @@ export const en = {
 
   cli: {
     description: 'Browse every public Agent Skill by theme, pick several and install them with `npx skills add`.',
-    lang: 'interface language (en, fr), remembered for later runs',
+    lang: 'interface language (see `skills-atlas lang`), remembered for later runs',
     catalog: 'alternative catalog (.json or .json.gz, path or URL)',
     offline: 'do not download the latest catalog; use the cached or bundled one',
     refresh: 'check GitHub for a newer catalog now instead of waiting up to 12 hours',

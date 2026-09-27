@@ -12,7 +12,7 @@ import {
 } from '../src/catalog/normalize.js';
 import { groupByTheme, querySkills, resolveTheme, sortSkills } from '../src/catalog/query.js';
 import { markOfficial, parseOfficialSitemap } from '../src/catalog/sources/official.js';
-import { langFlag, LANGUAGES, normalizeLang } from '../src/i18n/index.js';
+import { langFlag, LANGUAGES, LOCALES, normalizeLang, systemLang } from '../src/i18n/index.js';
 import { allThemes } from '../src/catalog/taxonomy.js';
 import { mapEntry as mapClaudePlugins } from '../src/catalog/sources/claude-plugins-dev.js';
 import { mapSearchSkill, parseSkillsSitemap } from '../src/catalog/sources/skills-sh.js';
@@ -301,6 +301,22 @@ describe('i18n', () => {
     expect(normalizeLang('en-US')).toBe('en');
     expect(normalizeLang('de')).toBeUndefined();
     expect(normalizeLang(undefined)).toBeUndefined();
+  });
+
+  it('picks the system language from LC_ALL, LC_MESSAGES, LANG, then the OS locale', () => {
+    expect(systemLang({ LANG: 'zh_CN.UTF-8' }, 'en-US')).toBe('zh');
+    expect(systemLang({ LC_ALL: 'ja_JP.UTF-8', LANG: 'fr_FR.UTF-8' }, 'en-US')).toBe('ja');
+    expect(systemLang({ LC_MESSAGES: 'ko_KR.UTF-8' }, 'en-US')).toBe('ko');
+    // Windows sets no LANG: the OS locale decides.
+    expect(systemLang({}, 'fr-FR')).toBe('fr');
+    expect(systemLang({ LANG: 'C.UTF-8' }, 'ja-JP')).toBe('ja');
+    // A language we do not have, set explicitly, is not overridden by the OS locale.
+    expect(systemLang({ LANG: 'de_DE.UTF-8' }, 'fr-FR')).toBeUndefined();
+    expect(normalizeLang('zh-TW')).toBe('zh');
+  });
+
+  it('has a number locale for every language', () => {
+    for (const lang of Object.keys(LANGUAGES)) expect(LOCALES[lang as keyof typeof LOCALES], lang).toBeTruthy();
   });
 
   it('reads -l / --lang anywhere before --', () => {

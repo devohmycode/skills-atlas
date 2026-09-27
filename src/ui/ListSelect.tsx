@@ -3,6 +3,7 @@ import { useMemo, useState } from 'react';
 import { t } from '../i18n/index.js';
 import { ACCENT, BOX, Hints, useTerminalSize, type Hint } from './Layout.js';
 import { isMouseInput, useListMouse } from './mouse.js';
+import { width } from './width.js';
 
 export interface Item<T extends string> {
   value: T;
@@ -39,7 +40,7 @@ export function ListSelect<T extends string>({ title, items, multiple, initial =
   const height = Math.max(3, Math.min(shown.length, rows - CHROME_LINES));
   const current = Math.min(cursor, Math.max(0, shown.length - 1));
   const top = Math.max(0, Math.min(current - Math.floor(height / 2), shown.length - height));
-  const labelW = Math.min(28, Math.max(...items.map((i) => i.label.length + (i.badge ? i.badge.length + 3 : 0)))) + 2;
+  const labelW = Math.min(28, Math.max(...items.map((i) => width(i.label) + (i.badge ? width(i.badge) + 3 : 0)))) + 2;
 
   const toggle = (value: T) =>
     setSelected((prev) => {
@@ -133,7 +134,7 @@ export function ListSelect<T extends string>({ title, items, multiple, initial =
                 {item.label}
               </Text>
               {item.badge && <Text color="green">{` · ${item.badge}`}</Text>}
-              <Text>{' '.repeat(Math.max(1, labelW - labelText.length))}</Text>
+              <Text>{' '.repeat(Math.max(1, labelW - width(labelText)))}</Text>
               {item.hint && <Text dimColor>{item.hint}</Text>}
             </Text>
           );

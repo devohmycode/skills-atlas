@@ -9,6 +9,7 @@ import { SCOPES, type InstallMethod, type InstallOptions, type Removal, type Sco
 import { Banner, Header, Hints, Panel, useTerminalSize, type StepId } from './Layout.js';
 import { ListSelect } from './ListSelect.js';
 import { isMouseInput } from './mouse.js';
+import { padEnd } from './width.js';
 import { scopesLabel, TreeSelect } from './TreeSelect.js';
 
 export interface WizardResult {
@@ -279,7 +280,7 @@ function Confirm({ ids, remove, options, onConfirm, onBack }: ConfirmProps) {
   const addCommands = ids.length ? planInstall(ids, options) : [];
   const row = (label: string, value: string) => (
     <Text>
-      <Text dimColor>{label.padEnd(10)}</Text>
+      <Text dimColor>{padEnd(label, 10)}</Text>
       {value}
     </Text>
   );

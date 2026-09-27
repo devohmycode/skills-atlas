@@ -6,6 +6,8 @@ import type { Skill, Theme } from '../src/types.js';
 import { App, type WizardResult } from '../src/ui/App.js';
 import { ListSelect } from '../src/ui/ListSelect.js';
 import { parseMouse } from '../src/ui/mouse.js';
+import { fit, padEnd, width } from '../src/ui/width.js';
+import stringWidth from 'string-width';
 import { TreeSelect } from '../src/ui/TreeSelect.js';
 
 const themes: Theme[] = [
@@ -24,7 +26,7 @@ const skills = [
 ];
 
 const KEY = { up: '\u001B[A', down: '\u001B[B', right: '\u001B[C', left: '\u001B[D', enter: '\r', escape: '\u001B' };
-const tick = () => new Promise((r) => setTimeout(r, 20));
+const tick = () => new Promise((r) => setTimeout(r, 40));
 async function press(stdin: { write: (s: string) => void }, ...keys: string[]) {
   for (const k of keys) {
     stdin.write(k);
@@ -331,6 +333,36 @@ describe('installed skills in the wizard', () => {
     expect(onDone).not.toHaveBeenCalled();
     await press(stdin, 'q');
     expect(onDone).toHaveBeenCalledWith(null);
+  });
+});
+
+describe('wide characters', () => {
+  it('pads and cuts by terminal columns, never splitting a wide character', () => {
+    expect(width('技能')).toBe(4);
+    expect(padEnd('技能', 6)).toBe('技能  ');
+    expect(fit('前端与后端开发', 7)).toBe('前端与…');
+    expect(width(fit('前端与后端开发', 8))).toBe(8);
+    expect(fit('abc', 5)).toBe('abc  ');
+  });
+
+  it('keeps the tree columns aligned in Chinese, with Chinese skill names', async () => {
+    setLang('zh');
+    try {
+      const cjk = [
+        { ...skill('a/b@前端组件', ['frontend']), installs: 900 },
+        { ...skill('a/b@react-hooks', ['frontend']), installs: 50 },
+      ];
+      const { lastFrame, stdin } = render(<TreeSelect themes={themes} skills={cjk} onSubmit={() => {}} onCancel={() => {}} />);
+      await press(stdin, KEY.right);
+      const frame = lastFrame()!;
+      expect(frame).toContain('前端与 Web');
+      const rows = frame.split('\n').filter((l) => l.includes('a/b'));
+      expect(rows).toHaveLength(2);
+      // The popularity column is right-aligned: both rows end at the same column, whatever the name's script.
+      expect(stringWidth(rows[0]!.trimEnd())).toBe(stringWidth(rows[1]!.trimEnd()));
+    } finally {
+      setLang('en');
+    }
   });
 });
 
