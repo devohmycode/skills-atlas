@@ -1,5 +1,5 @@
 import { Box, Text, useInput } from 'ink';
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { groupByTheme, haystack, popularityLabel, SORT_ORDERS, sortSkills, type SortOrder } from '../catalog/query.js';
 import { formatNumber, t, themeLabel } from '../i18n/index.js';
 import type { InstalledEntry } from '../catalog/installed.js';
@@ -37,6 +37,17 @@ const THEME_BOX_COLUMN = 7;
 /** Marks official skills in the list and the details panel. */
 const OFFICIAL_MARK = '◆';
 
+/** Theme headers, each followed by its skills when open (always open during a search). */
+function buildRows(groups: { theme: Theme; skills: Skill[] }[], expanded: Set<string>, filter: string): Row[] {
+  const out: Row[] = [];
+  for (const g of groups) {
+    const isOpen = filter !== '' || expanded.has(g.theme.id);
+    out.push({ kind: 'theme', theme: g.theme, skills: g.skills, expanded: isOpen });
+    if (isOpen) for (const skill of g.skills) out.push({ kind: 'skill', skill, themeId: g.theme.id });
+  }
+  return out;
+}
+
 /** Long popularity for the details panel: "924,211 installs". */
 function popularityLong(s: Skill): string {
   const m = t().tree;
@@ -63,9 +74,24 @@ export function TreeSelect({
 }: TreeSelectProps) {
   const m = t();
   const { columns, rows: termRows } = useTerminalSize();
-  const [expanded, setExpanded] = useState<Set<string>>(new Set());
-  const [selected, setSelected] = useState<Set<string>>(new Set(initialSelected));
-  const [cursor, setCursor] = useState(0);
+  const [expanded, setExpandedState] = useState<Set<string>>(new Set());
+  const [selected, setSelectedState] = useState<Set<string>>(new Set(initialSelected));
+  const [cursor, setCursorState] = useState(0);
+  // Keys can arrive faster than renders (held arrows, pasted input, a slow terminal): the
+  // handlers read and write these through a ref, so that each key sees the previous one.
+  const live = useRef({ expanded, selected, cursor });
+  const setExpanded = (next: Set<string>) => {
+    live.current.expanded = next;
+    setExpandedState(next);
+  };
+  const setSelected = (next: Set<string>) => {
+    live.current.selected = next;
+    setSelectedState(next);
+  };
+  const setCursor = (next: number) => {
+    live.current.cursor = next;
+    setCursorState(next);
+  };
   const [filter, setFilter] = useState('');
   const [editingFilter, setEditingFilter] = useState(false);
   const [sort, setSort] = useState<SortOrder>(initialSort);
@@ -81,16 +107,7 @@ export function TreeSelect({
   }, [sorted, texts, filter, officialOnly]);
   const groups = useMemo(() => groupByTheme(themes, visible), [themes, visible]);
 
-  const rows = useMemo(() => {
-    const out: Row[] = [];
-    for (const g of groups) {
-      // A search expands every group so that matches are visible.
-      const isOpen = filter !== '' || expanded.has(g.theme.id);
-      out.push({ kind: 'theme', theme: g.theme, skills: g.skills, expanded: isOpen });
-      if (isOpen) for (const skill of g.skills) out.push({ kind: 'skill', skill, themeId: g.theme.id });
-    }
-    return out;
-  }, [groups, expanded, filter]);
+  const rows = useMemo(() => buildRows(groups, expanded, filter), [groups, expanded, filter]);
 
   const height = Math.max(5, termRows - CHROME_LINES);
   const current = Math.min(cursor, Math.max(0, rows.length - 1));
@@ -106,28 +123,34 @@ export function TreeSelect({
   // The screen has a 1-column padding on each side.
   const sourceW = Math.max(0, columns - 2 - 8 - nameW - 2 - statusW - 2 - popW - 1);
 
-  const move = (delta: number) => setCursor(Math.max(0, Math.min(rows.length - 1, current + delta)));
-  const setOpen = (themeId: string, open: boolean) =>
-    setExpanded((prev) => {
-      const next = new Set(prev);
-      if (open) next.add(themeId);
-      else next.delete(themeId);
-      return next;
-    });
-  const toggle = (ids: string[]) =>
-    setSelected((prev) => {
-      const next = new Set(prev);
-      const allOn = ids.every((id) => next.has(id));
-      for (const id of ids) {
-        if (allOn) next.delete(id);
-        else next.add(id);
-      }
-      return next;
-    });
+  /** Rows and cursor as the keys typed so far left them, even before the next render. */
+  const liveRows = () => buildRows(groups, live.current.expanded, filter);
+  const liveCurrent = (list: Row[]) => Math.min(live.current.cursor, Math.max(0, list.length - 1));
+  const move = (delta: number) => {
+    const list = liveRows();
+    setCursor(Math.max(0, Math.min(list.length - 1, liveCurrent(list) + delta)));
+  };
+  const setOpen = (themeId: string, open: boolean) => {
+    const next = new Set(live.current.expanded);
+    if (open) next.add(themeId);
+    else next.delete(themeId);
+    setExpanded(next);
+  };
+  const toggle = (ids: string[]) => {
+    const next = new Set(live.current.selected);
+    const allOn = ids.every((id) => next.has(id));
+    for (const id of ids) {
+      if (allOn) next.delete(id);
+      else next.add(id);
+    }
+    setSelected(next);
+  };
 
   // Actions shared by the keys and the buttons of the hint bar.
-  const canSubmit = toInstall > 0 || toRemove > 0;
-  const submit = () => onSubmit([...selected]);
+  const changes = (sel: Set<string>) =>
+    [...sel].some((id) => !installed.has(id)) || [...installed.keys()].some((id) => !sel.has(id));
+  const canSubmit = changes(selected);
+  const submit = () => onSubmit([...live.current.selected]);
   const startSearch = () => setEditingFilter(true);
   const endSearch = () => setEditingFilter(false);
   const clearSearch = () => {
@@ -143,7 +166,8 @@ export function TreeSelect({
     setOfficialOnly((prev) => !prev);
     setCursor(0);
   };
-  const toggleAll = () => setExpanded((prev) => (prev.size ? new Set() : new Set(groups.map((g) => g.theme.id))));
+  const toggleAll = () =>
+    setExpanded(live.current.expanded.size ? new Set() : new Set(groups.map((g) => g.theme.id)));
 
   // Wheel moves the cursor; a click ticks a skill, or opens a theme (ticks it on its checkbox).
   const { ref: listRef, hover } = useListMouse(Math.min(height, rows.length - top), (e) => {
@@ -170,6 +194,8 @@ export function TreeSelect({
       setCursor(0);
       return;
     }
+    const list = liveRows();
+    const row = list[liveCurrent(list)];
     if (key.upArrow || input === 'k') move(-1);
     else if (key.downArrow || input === 'j') move(1);
     else if (key.pageUp) move(-height);
@@ -178,7 +204,7 @@ export function TreeSelect({
     else if (key.leftArrow && row) {
       const themeId = row.kind === 'theme' ? row.theme.id : row.themeId;
       setOpen(themeId, false);
-      setCursor(rows.findIndex((r) => r.kind === 'theme' && r.theme.id === themeId));
+      setCursor(liveRows().findIndex((r) => r.kind === 'theme' && r.theme.id === themeId));
     } else if (input === ' ' && row) {
       toggle(row.kind === 'theme' ? row.skills.map((s) => s.id) : [row.skill.id]);
     } else if (input === '/') startSearch();
@@ -186,7 +212,7 @@ export function TreeSelect({
     else if (input === 'o') toggleOfficial();
     else if (input === 'a') toggleAll();
     else if (key.escape && filter) setFilter('');
-    else if (key.return && canSubmit) submit();
+    else if (key.return && changes(live.current.selected)) submit();
     else if (key.return && row?.kind === 'theme') setOpen(row.theme.id, !row.expanded);
     else if (input === 'q' || key.escape) onCancel();
   });

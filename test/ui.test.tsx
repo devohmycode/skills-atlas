@@ -49,6 +49,16 @@ describe('TreeSelect', () => {
     expect(onSubmit).toHaveBeenCalledWith(['a/b@react-hooks']);
   });
 
+  it('applies keys typed faster than the screen redraws', async () => {
+    const onSubmit = vi.fn();
+    const { lastFrame, stdin } = render(<TreeSelect themes={themes} skills={skills} onSubmit={onSubmit} onCancel={() => {}} />);
+    await tick();
+    for (const k of [KEY.right, KEY.down, KEY.down, ' ', KEY.enter]) stdin.write(k);
+    await tick();
+    expect(lastFrame()).toContain('1 selected');
+    expect(onSubmit).toHaveBeenCalledWith(['a/b@tailwind']);
+  });
+
   it('selects a whole theme with space on its header', async () => {
     const onSubmit = vi.fn();
     const { lastFrame, stdin } = render(<TreeSelect themes={themes} skills={skills} onSubmit={onSubmit} onCancel={() => {}} />);
